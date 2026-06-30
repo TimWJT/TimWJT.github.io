@@ -18,7 +18,7 @@ export const profile = {
 export const about = {
   paragraphs: [
     'Penultimate-year Bachelor of Advanced Computing student at the University of Sydney, majoring in Computer Science and Cyber Security. Distinction WAM. NZ citizen, now based in Sydney.',
-    'I like building things that move — whether that is enemy AI in a Godot platformer, a competitive bot for SYNCS Bot Battle, or quiet physics experiments in code.',
+    'I like building things that move, whether that is enemy AI in a Godot platformer, a competitive bot for SYNCS Bot Battle, or quiet physics experiments in code.',
     'Outside code, I co-lead SYNCS, helped grow Gym Society from zero to 850+ members, and play piano (ABRSM Grade 7). I care about bringing people together through events as much as through software.',
   ],
 };
@@ -32,14 +32,14 @@ export const projects = [
     link: 'https://github.com/TimWJT',
   },
   {
-    title: 'Bot Battle 2025 — 3rd Place',
+    title: 'Bot Battle 2025, 3rd Place',
     stack: 'Python',
     description:
       'Carcassonne bot using BFS tile placement and ML-tuned parameters. Two-week Susquehanna × SYNCS competition.',
     link: 'https://syncs.org.au/',
   },
   {
-    title: 'Bot Battle 2024 — 7th of 72',
+    title: 'Bot Battle 2024, 7th of 72',
     stack: 'Python',
     description:
       'Risk-style simulation bot with efficient set logic for complex move handling.',
@@ -58,17 +58,17 @@ export const leadership = [
   {
     org: 'Sydney Computing Society (SYNCS)',
     role: 'Co-President',
-    period: 'Sep 2025 — Present',
+    period: 'Sep 2025 to Present',
     highlights: [
       'Lead executive team and society direction',
-      'Industry events with 160–240+ attendees',
+      'Industry events with 160-240+ attendees',
       '$9,000 sponsorship secured as Industry Liaison',
     ],
   },
   {
     org: 'USYD Gym Society',
     role: 'Secretary & Co-Founder',
-    period: 'Jan 2025 — Present',
+    period: 'Jan 2025 to Present',
     highlights: [
       'Grew membership from 0 to 850+',
       'Planned community events and executive coordination',
@@ -77,7 +77,7 @@ export const leadership = [
   {
     org: 'Piano Society',
     role: 'Event Director',
-    period: 'Jul — Oct 2024',
+    period: 'Jul to Oct 2024',
     highlights: ['Organised concerts and community gatherings'],
   },
 ];
