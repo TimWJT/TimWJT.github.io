@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Tim Wang — Advanced Computing student, SYNCS Co-President, game developer."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>Tim Wang</title>
+  </head>
+  <body>
+    <script>
+      (function () {
+        var valid = ['moonlit','parchment','tide','moss','slate','paper'];
+        var saved = localStorage.getItem('timwang-palette');
+        if (saved && valid.indexOf(saved) === -1) localStorage.removeItem('timwang-palette');
+        var motionValid = ['still','full','fade','lines','stagger','magnetic','topbar','cards','whisper','pills','draw'];
+        var motionSaved = localStorage.getItem('timwang-motion');
+        if (motionSaved && motionValid.indexOf(motionSaved) === -1) localStorage.removeItem('timwang-motion');
+        document.documentElement.removeAttribute('data-design');
+      })();
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
