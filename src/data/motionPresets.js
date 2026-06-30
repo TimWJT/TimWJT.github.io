@@ -31,7 +31,7 @@ export const motionPresets = [
   {
     id: 'still',
     name: 'Still',
-    description: 'No animation — static page.',
+    description: 'No animation. Static page.',
     effects: fx({}),
   },
   {

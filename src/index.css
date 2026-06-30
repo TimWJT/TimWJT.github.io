@@ -138,7 +138,7 @@ main {
   padding: 0 1.5rem 6rem;
 }
 
-/* Nav — solid, no glass */
+/* Nav: solid, no glass */
 .nav {
   position: sticky;
   top: 0;
@@ -454,7 +454,7 @@ main {
 }
 
 .highlights li::before {
-  content: '— ';
+  content: '· ';
   color: var(--border);
 }
 
