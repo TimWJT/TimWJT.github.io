@@ -18,6 +18,30 @@ export const profile = {
   },
 };
 
+/**
+ * Bodies dropped into the interactive hero. `heavy` ones are the headline
+ * facts (bigger, denser, kept on mobile); `light` ones are supporting tech.
+ */
+export const physicsHero = {
+  tokens: [
+    { label: 'Bot Battle 2026: 1st of 94', weight: 'heavy' },
+    { label: 'SYNCS Co-President', weight: 'heavy' },
+    { label: 'Godot', weight: 'heavy' },
+    { label: 'Python', weight: 'heavy' },
+    { label: 'React', weight: 'light' },
+    { label: 'PyTorch', weight: 'light' },
+    { label: 'PostgreSQL', weight: 'light' },
+    { label: 'Java', weight: 'light' },
+    { label: 'C', weight: 'light' },
+    { label: 'SQL', weight: 'light' },
+    { label: 'Supabase', weight: 'light' },
+    { label: 'Optuna', weight: 'light' },
+    { label: 'GDScript', weight: 'light' },
+    { label: 'A* pathfinding', weight: 'light' },
+    { label: 'Cyber Security', weight: 'light' },
+  ],
+};
+
 export const education = {
   school: 'University of Sydney',
   degree: 'Bachelor of Advanced Computing',
