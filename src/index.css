@@ -655,6 +655,175 @@ main {
 }
 
 /* ---------------------------------------------------------------
+   Physics hero (v2)
+   --------------------------------------------------------------- */
+.hero-physics {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  min-height: calc(100dvh - var(--nav-height));
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+.physics-copy {
+  position: relative;
+  z-index: 3;
+  max-width: 34rem;
+  pointer-events: none;
+}
+
+.physics-copy .btn,
+.physics-copy a {
+  pointer-events: auto;
+}
+
+.physics-copy h1 {
+  margin-bottom: 0.5rem;
+}
+
+/* The play area covers the hero; tokens are the only thing that catch input. */
+.physics-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  touch-action: pan-y;
+}
+
+.physics-scene.is-ready {
+  opacity: 1;
+}
+
+.physics-scene.is-grabbing {
+  cursor: grabbing;
+}
+
+.physics-token {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  border-radius: 999px;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  backface-visibility: hidden;
+}
+
+.physics-token--heavy {
+  font-size: 0.95rem;
+  padding: 0.6rem 1.15rem;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 500;
+}
+
+.physics-token--light {
+  font-size: 0.8rem;
+  padding: 0.45rem 0.95rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.physics-token:active {
+  cursor: grabbing;
+}
+
+.physics-controls {
+  position: absolute;
+  left: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.physics-hint {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin: 0;
+  transition: opacity 0.5s ease;
+}
+
+.physics-hint.is-hidden {
+  opacity: 0;
+}
+
+.physics-shake {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.25s ease, color 0.25s ease;
+}
+
+.physics-shake:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.physics-fallback-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .physics-controls {
+    left: 1.15rem;
+    bottom: 1.15rem;
+  }
+
+  .physics-token--heavy {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.9rem;
+  }
+}
+
+/* ---------------------------------------------------------------
+   Debug panel version switch
+   --------------------------------------------------------------- */
+.panel-version {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+}
+
+.panel-version strong {
+  font-size: 0.75rem;
+  color: var(--text);
+}
+
+.panel-version span {
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.panel-version:hover {
+  border-color: var(--accent);
+}
+
+/* ---------------------------------------------------------------
    Debug panel header (style panel is hidden until unlocked)
    --------------------------------------------------------------- */
 .panel-head {
