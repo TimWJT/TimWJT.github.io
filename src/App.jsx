@@ -9,7 +9,6 @@ import Leadership from './components/Leadership';
 import Contact from './components/Contact';
 import StylePanel from './components/StylePanel';
 import MotionLayer from './motion/MotionLayer';
-import PeelSection from './motion/PeelSection';
 import './index.css';
 
 export default function App() {
@@ -22,11 +21,7 @@ export default function App() {
         </a>
         <div className="site">
           <Nav />
-          <div id="top">
-            <PeelSection zone="fold" strategy="cells" fillViewport>
-              <Hero peelLayer />
-            </PeelSection>
-          </div>
+          <Hero />
           <main id="main">
             <About />
             <Experience />

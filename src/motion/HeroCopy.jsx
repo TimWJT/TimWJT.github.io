@@ -37,25 +37,7 @@ function HeroActions() {
   );
 }
 
-function StaticHeroCopy({ variant }) {
-  return (
-    <div className={`hero-copy hero-copy--${variant}`}>
-      <p className="eyebrow">{profile.roles.join(' · ')}</p>
-      <h1>{profile.name}</h1>
-      <p className="hero-legal-name">
-        Legal name: {profile.legalName}. I go by Tim professionally.
-      </p>
-      <p className="hero-tagline">{profile.tagline}</p>
-      <HeroActions />
-    </div>
-  );
-}
-
-export default function HeroCopy({ variant = 'default', animate = true, staticCopy = false }) {
-  if (staticCopy) {
-    return <StaticHeroCopy variant={variant} />;
-  }
-
+export default function HeroCopy({ variant = 'default', animate = true }) {
   const { motion: preset } = useMotionPreset();
   const reveal = animate && preset.effects.scrollReveal;
 

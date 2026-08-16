@@ -138,7 +138,7 @@ export const projects = [
     link: 'https://github.com/TimWJT/syncs-bot-battle-2024-risk',
   },
   {
-    title: 'Tanks',
+    title: 'Tanks Game',
     stack: ['Java'],
     period: '2024',
     context: 'Individual project',

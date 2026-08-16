@@ -26,29 +26,6 @@ class RO { observe() {} unobserve() {} disconnect() {} }
 globalThis.ResizeObserver = window.ResizeObserver = RO;
 
 
-// PEEL_READY=1 stubs layout metrics so the peel section reaches its "ready"
-// state (the real-browser path with cover + reveal layers).
-if (process.env.PEEL_READY) {
-  const proto = window.Element.prototype;
-  proto.getBoundingClientRect = function () {
-    return { x: 0, y: 0, top: 0, left: 0, right: 1024, bottom: 700, width: 1024, height: 700, toJSON() {} };
-  };
-  Object.defineProperty(window.HTMLElement.prototype, 'clientWidth', { get: () => 1024, configurable: true });
-  Object.defineProperty(window.document.documentElement, 'clientWidth', { get: () => 1024, configurable: true });
-  // jsdom ships no canvas backend; stub just enough for peelMask to run.
-  const noop = () => {};
-  window.HTMLCanvasElement.prototype.getContext = () => ({
-    clearRect: noop, fillRect: noop, beginPath: noop, closePath: noop, moveTo: noop,
-    lineTo: noop, arc: noop, fill: noop, stroke: noop, save: noop, restore: noop,
-    translate: noop, rotate: noop, scale: noop, setTransform: noop, drawImage: noop,
-    createLinearGradient: () => ({ addColorStop: noop }),
-    createRadialGradient: () => ({ addColorStop: noop }),
-    putImageData: noop, getImageData: () => ({ data: new Uint8ClampedArray(4) }),
-    fillStyle: '', strokeStyle: '', globalAlpha: 1, filter: 'none',
-  });
-  window.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/png;base64,';
-}
-
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const errors = [];
 const origError = console.error;
@@ -75,7 +52,7 @@ ok('nav has 5 section links + resume', $('#nav-menu li').length === 6, `got ${$(
 ok('mobile toggle present', $('button.nav-toggle').length === 1);
 ok('skip link present', $('a.skip-link').length === 1);
 ok('hero name rendered', html.includes('Tim Wang'));
-ok('hero CTAs (3 buttons per layer)', $('.hero-actions .btn').length >= 3, `got ${$('.hero-actions .btn').length}`);
+ok('hero CTAs present', $('.hero-actions .btn').length === 3, `got ${$('.hero-actions .btn').length}`);
 ok('resume link points at pdf', !!document.querySelector('a[href$="Tim_Wang_Resume.pdf"]'));
 ok('all 5 sections present', ['about','experience','projects','leadership','contact'].every((id) => document.getElementById(id)));
 ok('education card + WAM', html.includes('78.88') && $('.edu-card').length === 1);
@@ -96,13 +73,31 @@ ok('no external link without rel=noreferrer',
   [...$('a[target="_blank"]')].every((a) => (a.getAttribute('rel') || '').includes('noreferrer')));
 ok('every project card has a link', [...$('#projects .card')].every((c) => c.querySelector('a[href]')));
 ok('no stale content (Tanks kept, old copy gone)', !html.includes('Godot 2D Platformer') && !html.includes('BFS tile placement'));
-ok('peel reveal layer is inert (no duplicate tab stops)',
-  [...$('.peel-reveal-layer')].every((el) => el.hasAttribute('inert')),
-  `layers=${$('.peel-reveal-layer').length}`);
-ok('only one accessible copy of hero CTAs',
-  [...$('.hero-actions')].filter((el) => !el.closest('[aria-hidden="true"]')).length === 1,
-  `visible=${[...$('.hero-actions')].filter((el) => !el.closest('[aria-hidden="true"]')).length}`);
+ok('peel effect fully removed', !html.includes('peel-') && $('.peel-section, .peel-zone, .peel-reveal-layer').length === 0);
+ok('hero renders exactly once', $('section.hero').length === 1, `got ${$('section.hero').length}`);
+ok('single copy of hero CTAs', $('.hero-actions').length === 1, `got ${$('.hero-actions').length}`);
+ok('hero text is selectable', getComputedStyle(document.querySelector('.hero')).userSelect !== 'none');
+ok('style panel hidden by default', $('.style-panel').length === 0, `got ${$('.style-panel').length}`);
+
 ok('no React errors logged', errors.length === 0, errors.slice(0, 3).join(' | '));
+
+// --- scenario 2: the secret unlock reveals the debug panel ---
+for (const ch of 'design') {
+  await act(async () => {
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: ch, bubbles: true }));
+  });
+}
+await new Promise((r) => setTimeout(r, 50));
+ok('typing the secret reveals the panel', $('.style-panel').length === 1, `got ${$('.style-panel').length}`);
+ok('panel has a close button', $('.panel-close').length === 1);
+ok('unlock is persisted', window.localStorage.getItem('timwang-debug') === '1');
+
+await act(async () => {
+  window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+});
+await new Promise((r) => setTimeout(r, 50));
+ok('Escape hides the panel again', $('.style-panel').length === 0);
+ok('unlock flag cleared on hide', window.localStorage.getItem('timwang-debug') === null);
 
 console.log('\n--- smoke results ---');
 for (const [status, name, extra] of checks) console.log(`${status}  ${name}${extra ? '  (' + extra + ')' : ''}`);

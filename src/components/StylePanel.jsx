@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { usePalette } from '../context/PaletteContext';
 import { useMotionPreset } from '../context/MotionContext';
+import useDebugUnlock from '../hooks/useDebugUnlock';
 
 function CycleRow({ label, name, description, index, total, onPrev, onNext, countLabel, badge }) {
   return (
@@ -30,9 +31,25 @@ export default function StylePanel() {
   const palette = usePalette();
   const motionCtx = useMotionPreset();
   const [expanded, setExpanded] = useState(false);
+  const [unlocked, setUnlocked] = useDebugUnlock();
+
+  // Debug-only tool: hidden from visitors. See src/hooks/useDebugUnlock.js.
+  if (!unlocked) return null;
 
   return (
     <div className={`style-panel ${expanded ? 'is-expanded' : ''}`}>
+      <div className="panel-head">
+        <p className="panel-title">Debug: design</p>
+        <button
+          type="button"
+          className="panel-close"
+          onClick={() => setUnlocked(false)}
+          aria-label="Hide design panel"
+        >
+          ✕
+        </button>
+      </div>
+
       <CycleRow
         label="Colors"
         name={palette.palette.name}

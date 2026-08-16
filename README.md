@@ -21,9 +21,8 @@ Open the URL in the terminal (prefers port **17331** — not 5173 if that's anot
 | `npm test` | Headless render smoke test (28 assertions) |
 
 `npm test` mounts the real app in jsdom and asserts the sections, project count,
-resume link, and accessibility invariants all still hold. Run it after editing
-`src/data/content.js`. `PEEL_READY=1 npm test` re-runs it with layout metrics
-stubbed so the peel section reaches its post-measure state.
+resume link, debug-panel gating, and accessibility invariants all still hold
+(36 assertions). Run it after editing `src/data/content.js`.
 
 ## Editing content
 
@@ -71,14 +70,24 @@ SEO and sharing metadata (Open Graph, Twitter card, JSON-LD `Person` schema,
 canonical URL) live in `index.html`. `public/robots.txt` and
 `public/sitemap.xml` point at `https://timwjt.github.io/`.
 
-## Pick a design
+## Design panel (debug only, hidden from visitors)
 
-Use the **Design style** panel (bottom-right):
+The colour/motion panel is hidden by default. Three ways to open it:
 
-- **← →** to cycle through 18 styles
-- **Browse all 18 designs** to see the full list and jump to any one
+1. **Type `design`** anywhere on the page (not while focused in a text field)
+2. **Add `?design` to the URL** — `timwjt.github.io/?design` or `localhost:17331/?design`
+3. **`localStorage.setItem('timwang-debug', '1')`** in the console, then reload
 
-Your choice is saved in the browser.
+Once open it stays open in that browser. To hide it again: press **Escape**,
+click the **✕**, or type `design` a second time — any of which clears the saved
+flag.
+
+Inside the panel, **← →** cycle colours and motion styles, and **Browse all
+motion styles** lists them all. Your picks persist in `localStorage` separately
+from the unlock flag.
+
+The secret, storage key, and URL flag are the three constants at the top of
+`src/hooks/useDebugUnlock.js`.
 
 ## Designs included
 
@@ -111,8 +120,6 @@ No glass blur, no lattice, no cursor glow by default.
 - Mobile hamburger nav with `aria-expanded` / `aria-controls`, closes on Escape
 - Scroll-spy highlights the current section in the nav
 - `prefers-reduced-motion` disables transitions, grain, lattice, and cursor glow
-- The peel section's duplicated measurement and reveal layers are `inert`, so
-  there is exactly one keyboard-reachable copy of the hero
 - Print stylesheet strips chrome and expands link URLs
 
 ## Deploy
