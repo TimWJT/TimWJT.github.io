@@ -19,17 +19,6 @@
   --max-width: 1080px;
   --section-gap: clamp(4rem, 10vw, 7rem);
   --nav-height: 3.75rem;
-  --peel-fold-bg: #101a28;
-  --peel-fold-text: #f4a89a;
-  --peel-fold-muted: #9eb4c8;
-  --peel-below-bg: #181024;
-  --peel-below-text: #9debd0;
-  --peel-below-muted: #c4b5fd;
-  --peel-radius: 3px;
-  --peel-reveal-radius-end: 3px;
-  --peel-reveal-anim-ms: 900ms;
-  --peel-grain-step: 4px;
-  --peel-grain-fill: 0.84;
 }
 
 html {
@@ -233,9 +222,10 @@ main {
   display: flex;
   align-items: center;
   padding: 4rem 0 2rem;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-tap-highlight-color: transparent;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
 }
 
 .hero-stage {
@@ -255,188 +245,8 @@ main {
   max-width: 36rem;
 }
 
-/* Peel */
-.peel-section {
-  position: relative;
-  width: 100%;
-  max-width: none;
-  overflow: visible;
-}
-
-.peel-zone {
-  position: relative;
-  touch-action: manipulation;
-  cursor: grab;
-}
-
-.peel-content-frame {
-  width: 100%;
-  max-width: var(--max-width);
-  margin: 0 auto;
-  padding: 0 1.5rem;
-  box-sizing: border-box;
-}
-
-.peel-section--fold {
-  min-height: calc(100dvh - var(--nav-height));
-  width: 100vw;
-  max-width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
-}
-
-.peel-zone.peel-zone--dragging {
-  cursor: grabbing;
-  touch-action: none;
-}
-
-.peel-sizer {
-  position: relative;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.peel-fallback {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.peel-base-layer {
-  display: none;
-}
-
-.peel-cover-inner {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.peel-content-frame a,
-.peel-content-frame button,
-.peel-content-frame .smart-link,
-.peel-content-frame .magnetic-link-wrap {
-  position: relative;
-  z-index: 3;
-  cursor: pointer;
-  pointer-events: auto;
-}
-
-/* Hero CTAs sit inside the peel cover layer, which is pointer-events: none.
-   Re-enable them so the buttons stay clickable and keyboard reachable. */
-.peel-cover-layer .hero-actions,
-.peel-fallback .hero-actions,
-.peel-static .hero-actions {
-  pointer-events: auto;
-}
-
-/* Revealed (peeled) tone: keep the buttons legible against the fold palette. */
-.peel-reveal-tone--fold .btn-primary {
-  background: var(--peel-fold-text);
-  border-color: var(--peel-fold-text);
-  color: var(--peel-fold-bg);
-}
-
-.peel-reveal-tone--fold .btn-ghost {
-  color: var(--peel-fold-muted);
-  border-color: color-mix(in srgb, var(--peel-fold-muted) 35%, transparent);
-}
-
-.peel-reveal-tone--fold {
-  background: var(--peel-fold-bg);
-}
-
-.peel-reveal-tone--below {
-  background: var(--peel-below-bg);
-}
-
-.peel-reveal-tone--fold h1,
-.peel-reveal-tone--fold h2,
-.peel-reveal-tone--fold .split-char {
-  color: var(--peel-fold-text);
-}
-
-.peel-reveal-tone--fold .eyebrow,
-.peel-reveal-tone--fold .hero-legal-name,
-.peel-reveal-tone--fold .hero-tagline,
-.peel-reveal-tone--fold .section-label,
-.peel-reveal-tone--fold .prose p {
-  color: var(--peel-fold-muted);
-}
-
-.peel-reveal-tone--below h1,
-.peel-reveal-tone--below h2,
-.peel-reveal-tone--below h3,
-.peel-reveal-tone--below .split-char {
-  color: var(--peel-below-text);
-}
-
-.peel-reveal-tone--below .section-label,
-.peel-reveal-tone--below .prose p,
-.peel-reveal-tone--below .card p,
-.peel-reveal-tone--below .card h3,
-.peel-reveal-tone--below .card a {
-  color: var(--peel-below-muted);
-}
-
-.peel-reveal-tone--below .card a:hover {
-  color: var(--peel-below-text);
-}
-
-.peel-cover-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.peel-cover-layer--mask {
-  width: 100%;
-  height: 100%;
-  contain: paint;
-}
-.peel-grid-bounds {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  visibility: hidden;
-}
-
-.peel-reveal-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1;
-  pointer-events: none;
-  width: 100%;
-  height: 100%;
-  contain: paint;
-}
-
-.peel-reveal-layer--cells {
-  overflow: visible;
-}
-
-.peel-mask-canvas {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.peel-static,
-.peel-section {
-  user-select: none;
-  -webkit-user-select: none;
-}
-
 .hero-copy {
   width: 100%;
-  user-select: none;
-  -webkit-user-select: none;
 }
 
 .hero h1 {
@@ -842,6 +652,43 @@ main {
   font-size: 0.65rem;
   color: var(--muted);
   line-height: 1.3;
+}
+
+/* ---------------------------------------------------------------
+   Debug panel header (style panel is hidden until unlocked)
+   --------------------------------------------------------------- */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-title {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin: 0;
+}
+
+.panel-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0.2rem 0.35rem;
+  border-radius: 4px;
+}
+
+.panel-close:hover {
+  color: var(--text);
 }
 
 /* ---------------------------------------------------------------
@@ -1282,8 +1129,11 @@ main {
     padding: 0 1.15rem 4rem;
   }
 
+  /* Keep the hero's left edge aligned with the sections below it. */
   .hero {
     min-height: auto;
+    padding-left: 1.15rem;
+    padding-right: 1.15rem;
   }
 
   .hero-actions .btn {
