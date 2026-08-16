@@ -1,6 +1,18 @@
 import { motion } from 'motion/react';
 
-export default function SplitHeading({ text, className = '' }) {
+export default function SplitHeading({ text, className = '', animate = true }) {
+  if (!animate) {
+    return (
+      <h1 className={className} aria-hidden="true">
+        {text.split('').map((char, i) => (
+          <span key={`${char}-${i}`} className="split-char" style={{ display: 'inline-block' }}>
+            {char === ' ' ? '\u00A0' : char}
+          </span>
+        ))}
+      </h1>
+    );
+  }
+
   return (
     <h1 className={className} aria-label={text}>
       {text.split('').map((char, i) => (

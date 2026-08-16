@@ -21,51 +21,55 @@ export default function Leadership() {
             transition={{ duration: 0.4, delay: i * 0.1 }}
           >
             <div className="timeline-head">
-              <h3>{entry.org}</h3>
-              <span>{entry.period}</span>
+              <h3>
+                {entry.link ? (
+                  <a href={entry.link} target="_blank" rel="noreferrer">
+                    {entry.org}
+                  </a>
+                ) : (
+                  entry.org
+                )}
+              </h3>
             </div>
-            <p className="role">{entry.role}</p>
-            <ul className="highlights">
-              {entry.highlights.map((h) => (
-                <li key={h}>{h}</li>
-              ))}
-            </ul>
+            {entry.roles.map((role) => (
+              <div key={role.title} className="role-block">
+                <div className="role-head">
+                  <p className="role">{role.title}</p>
+                  <span className="role-period">{role.period}</span>
+                </div>
+                <ul className="highlights">
+                  {role.highlights.map((h) => (
+                    <li key={h}>{h}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </motion.li>
         ))}
       </ul>
 
       <div className="skills-block">
         <h3>Skills</h3>
-        <div className="skill-tags">
-          {skills.technical.map((s, i) => (
-            <motion.span
-              key={s}
-              className="pill"
-              initial={reveal ? { opacity: 0, scale: 0.92 } : false}
-              whileInView={reveal ? { opacity: 1, scale: 1 } : undefined}
-              whileHover={pillHover ? { y: -2, scale: 1.04 } : undefined}
-              viewport={{ once: true }}
-              transition={{ duration: 0.3, delay: i * 0.04 }}
-            >
-              {s}
-            </motion.span>
-          ))}
-        </div>
-        <div className="skill-tags muted-tags">
-          {skills.other.map((s, i) => (
-            <motion.span
-              key={s}
-              className="pill pill-ghost"
-              initial={reveal ? { opacity: 0, scale: 0.92 } : false}
-              whileInView={reveal ? { opacity: 1, scale: 1 } : undefined}
-              whileHover={pillHover ? { y: -2 } : undefined}
-              viewport={{ once: true }}
-              transition={{ duration: 0.3, delay: 0.2 + i * 0.04 }}
-            >
-              {s}
-            </motion.span>
-          ))}
-        </div>
+        {skills.map((group, gi) => (
+          <div key={group.label} className="skill-group">
+            <p className="skill-group-label">{group.label}</p>
+            <div className="skill-tags">
+              {group.items.map((s, i) => (
+                <motion.span
+                  key={s}
+                  className={gi === skills.length - 1 ? 'pill pill-ghost' : 'pill'}
+                  initial={reveal ? { opacity: 0, scale: 0.92 } : false}
+                  whileInView={reveal ? { opacity: 1, scale: 1 } : undefined}
+                  whileHover={pillHover ? { y: -2, scale: 1.04 } : undefined}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.3, delay: i * 0.03 }}
+                >
+                  {s}
+                </motion.span>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );

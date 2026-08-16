@@ -6,6 +6,15 @@ export default function SectionHeader({ label, title }) {
   const reveal = preset.effects.scrollReveal;
   const showLine = preset.effects.sectionLine;
 
+  if (!reveal && !showLine) {
+    return (
+      <header className="section-header">
+        <p className="section-label">{label}</p>
+        <h2>{title}</h2>
+      </header>
+    );
+  }
+
   return (
     <header className="section-header">
       <motion.p

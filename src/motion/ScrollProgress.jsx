@@ -1,8 +1,8 @@
-import { motion, useScroll, useSpring } from 'motion/react';
+import { motion, useScroll, useTransform } from 'motion/react';
 
 export default function ScrollProgress() {
   const { scrollYProgress } = useScroll();
-  const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
+  const scaleX = useTransform(scrollYProgress, (v) => v);
 
   return <motion.div className="scroll-progress" style={{ scaleX }} aria-hidden="true" />;
 }

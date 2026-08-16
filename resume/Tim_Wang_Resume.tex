@@ -1,0 +1,229 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[margin=0.50in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+
+\pagecolor{white}
+\color{black}
+\pagestyle{empty}
+\raggedbottom
+\setlength{\parindent}{0pt}
+\setlength{\tabcolsep}{0pt}
+\setlist[itemize]{
+  leftmargin=1.45em,
+  itemsep=1.0pt,
+  topsep=1.5pt,
+  parsep=0pt,
+  partopsep=0pt
+}
+
+\titleformat{\section}
+  {\centering\large\bfseries}
+  {}
+  {0pt}
+  {}
+  [\vspace{-2pt}\titlerule]
+\titlespacing*{\section}{0pt}{4pt}{4pt}
+\urlstyle{same}
+
+\newcommand{\educationentry}[4]{%
+  \begin{tabularx}{\textwidth}{@{}Xr@{}}
+    \textbf{#1} & \textbf{#2} \\
+    \textit{#3} & \textit{#4}
+  \end{tabularx}\vspace{1pt}
+}
+
+\newcommand{\projectgroup}[2]{%
+  \vspace{3pt}
+  \begin{tabularx}{\textwidth}{@{}Xr@{}}
+    \textbf{#1} & \textit{#2}
+  \end{tabularx}\vspace{-1pt}
+}
+
+\newcommand{\project}[3]{%
+  \vspace{6pt}
+  \begin{tabularx}{\textwidth}{@{}Xr@{}}
+    \textbf{#1\enspace|\enspace#2} & \textit{#3}
+  \end{tabularx}\vspace{-1pt}
+}
+
+\newcommand{\projectyear}[2]{%
+  \textbf{#1\enspace|\enspace#2}\par\vspace{-1pt}
+}
+
+\newcommand{\linkedprojectyear}[4]{%
+  \begin{tabularx}{\textwidth}{@{}Xr@{}}
+    \textbf{\href{#1}{#2\enspace|\enspace#3}} & \textit{#4}
+  \end{tabularx}\vspace{-1pt}
+}
+
+\newcommand{\linkedproject}[4]{%
+  \vspace{6pt}
+  \begin{tabularx}{\textwidth}{@{}Xr@{}}
+    \textbf{\href{#1}{#2\enspace|\enspace#3}} & \textit{#4}
+  \end{tabularx}\vspace{-1pt}
+}
+
+\newcommand{\projectcontext}[1]{%
+  \textit{#1}\par\vspace{-1pt}
+}
+
+\newcommand{\organisation}[2]{%
+  \vspace{3pt}
+  \begin{tabularx}{\textwidth}{@{}Xr@{}}
+    \textbf{#1} & \textbf{#2}
+  \end{tabularx}\vspace{-1pt}
+}
+
+\newcommand{\role}[2]{%
+  \begin{tabularx}{\textwidth}{@{}Xr@{}}
+    \textit{#1} & \textit{#2}
+  \end{tabularx}\vspace{-1pt}
+}
+
+\begin{document}
+\fontsize{9.6pt}{10.8pt}\selectfont
+
+\begin{center}
+  {\LARGE\bfseries Tim Wang}\\[4pt]
+  {\fontsize{9pt}{10pt}\selectfont
+  \href{tel:+61402283659}{+61 402 283 659}
+  \enspace$\bullet$\enspace
+  \href{mailto:tim200465@gmail.com}{tim200465@gmail.com}
+  \enspace$\bullet$\enspace
+  \href{https://timwjt.github.io}{timwjt.github.io}
+  \enspace$\bullet$\enspace
+  \href{https://www.linkedin.com/in/timwang01}{linkedin.com/in/timwang01}
+  \enspace$\bullet$\enspace
+  \href{https://github.com/TimWJT}{github.com/TimWJT}
+  \enspace$\bullet$\enspace
+  NZ Citizen\par}
+\end{center}
+\vspace{-7pt}
+
+\section{Education}
+\educationentry
+  {University of Sydney (Penultimate Year)}
+  {Sydney, NSW}
+  {Bachelor of Advanced Computing -- Computer Science and Cyber Security}
+  {Jul 2023 -- Expected Nov 2027}
+\textbf{WAM:} 78.88 (Distinction)
+\enspace$\bullet$\enspace
+\textbf{ATAR:} 97.55
+
+\section{Experience}
+
+\project
+  {Software Developer}
+  {Pancreas Segmentation from Medical Images}
+  {Aug 2026 -- Oct 2026}
+\projectcontext{Capstone | 7-person team | Client: University of Sydney | Python, PyTorch, nnU-Net, MONAI}
+\begin{itemize}
+  \item Developing a deep learning model to segment the pancreas from CT and MRI scans, targeting benchmark accuracy against state-of-the-art models.
+  \item Evaluating generalisability across multi-centre datasets for open-source release to the research community.
+\end{itemize}
+
+\linkedproject
+  {https://www.reltutoring.org/}
+  {Software Developer}
+  {Refugee English Language Tutoring (RELT)}
+  {Aug 2026 -- Present}
+\projectcontext{2-person team | SQL, Web Development}
+\begin{itemize}
+  \item Replacing a manual Excel workflow with a SQL-backed web application for a charity serving 200+ weekly participants.
+  \item Designing an automated matching algorithm to replace manual review, pairing on availability, language, and goals.
+\end{itemize}
+
+\section{Technical Projects}
+
+\projectgroup
+  {Susquehanna x SYNCS Bot Battle}
+  {}
+\projectcontext{Annual 2-week competition to develop autonomous bots for a different game environment each year}
+\linkedprojectyear{https://github.com/TimWJT/bot-battle-2026}{2026 Competition -- 1st of 94 Teams}{Python, Optuna, Supabase, PostgreSQL}{Jul 2026}
+\projectcontext{Primary developer | 2-person team | Environment based on Agar.io}
+\begin{itemize}
+  \item Engineered the bot's decision-making system, using game-state tracking to coordinate survival, pursuit, and resource-gathering.
+  \item Built a predictive planning system that evaluated up to 36 movement directions across 14 future time steps, selecting actions by calculating the net present value of projected rewards and risks.
+  \item Developed a distributed optimisation pipeline that ran simulations concurrently across CPU cores on 2 computers, using Optuna with Supabase-hosted PostgreSQL to coordinate trials and accelerate parameter tuning.
+\end{itemize}
+\linkedprojectyear{https://github.com/TimWJT/syncs-bot-battle-2025-carcassonne}{2025 Competition -- 3rd of 28 Teams}{Python}{Jul 2025}
+\projectcontext{Primary developer | 4-person team | Environment based on Carcassonne}
+\begin{itemize}
+  \item Built a bot simulating every tile placement and rotation, scoring structures by ownership and completion likelihood.
+\end{itemize}
+\linkedprojectyear{https://github.com/TimWJT/syncs-bot-battle-2024-risk}{2024 Competition -- 7th of 72 Teams}{Python}{Jul 2024}
+\projectcontext{Individual project | Environment based on Risk}
+\begin{itemize}
+  \item Built a multi-phase decision engine that adapted expansion, attack, and defence to map control and opponent strength.
+\end{itemize}
+
+\project
+  {Lumen Fall}
+  {Godot, GDScript}
+  {Jan 2024 -- Present}
+\projectcontext{2D action game | 2-person team | In development}
+\begin{itemize}
+  \item Designed a modular, data-driven combat framework supporting 100+ weapon configurations through reusable components.
+  \item Developed a physics-aware A* navigation system that constructs paths from level geometry and validates jumps.
+\end{itemize}
+
+\linkedproject
+  {https://meta-game-arena.vercel.app/}
+  {Hivemind}
+  {React, Supabase, PostgreSQL}
+  {Jun 2026 -- Present}
+\projectcontext{Individual project | In development}
+\begin{itemize}
+  \item Developing a real-time multiplayer web application with room creation, timed rounds, live results, and leaderboards.
+\end{itemize}
+
+\linkedproject
+  {https://richardlr03.itch.io/finvolution}
+  {Finvolution -- Special Category Award}
+  {Godot, GDScript}
+  {Jun 2026}
+\projectcontext{4-person team | 72-hour USYD Game Jam}
+\begin{itemize}
+  \item Architected and shipped a browser-playable strategy game at an event involving 200 participants across 44 teams.
+  \item Built a reusable object-oriented framework for 10+ enemy types with configurable spawning, progression, and difficulty scaling.
+\end{itemize}
+
+\section{Leadership Experience}
+
+\organisation{\href{https://syncs.org.au/about}{Sydney Computing Society (SYNCS)}}{}
+\role{Co-President}{Sep 2025 -- Present}
+\begin{itemize}
+  \item Co-lead a 54-person executive and subcommittee team serving 5,000+ members, providing direction and oversight across 8 portfolios.
+  \item Manage relations with the School of Computer Science and the Faculty of Engineering, and represent SYNCS in industry partnerships.
+  \item Launched a food sponsorship initiative, established a competition events portfolio, and rebuilt the Notion workspace.
+\end{itemize}
+\role{Industry Liaison}{Sep 2024 -- Sep 2025}
+\begin{itemize}
+  \item Coordinated events with 16 companies, including a networking night for 160+ attendees.
+  \item Individually secured \$9,000 in sponsorship funding through outreach and negotiations.
+\end{itemize}
+\role{Industry Subcommittee}{Mar 2024 -- Sep 2024}
+\begin{itemize}
+  \item Organised sponsor events and presented introductory information to 200+ incoming Faculty of Engineering students.
+\end{itemize}
+
+\vspace{2pt}
+\organisation{Notion}{}
+\role{Campus Leader}{Aug 2026 -- Present}
+\begin{itemize}
+  \item Selected as a student ambassador to grow campus adoption through workshops, templates, and product feedback.
+\end{itemize}
+
+\section{Skills}
+\textbf{Programming Languages:} Python, Java, C, SQL, GDScript, Bash\\
+\textbf{Tools \& Technologies:} Supabase, PostgreSQL, Git, Jenkins, JUnit, CI/CD\\
+\textbf{AI \& Optimisation:} Hyperparameter Optimisation (Optuna), LLM APIs (OpenRouter), Cursor, Claude, ChatGPT
+
+\end{document}

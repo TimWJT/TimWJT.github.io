@@ -8,6 +8,11 @@ const linkItems = [
   { href: `mailto:${profile.email}`, label: profile.email, external: false },
   { href: profile.links.linkedin, label: 'LinkedIn', external: true },
   { href: profile.links.github, label: 'GitHub', external: true },
+  {
+    href: `${import.meta.env.BASE_URL}${profile.resume}`,
+    label: 'Resume (PDF)',
+    external: true,
+  },
 ];
 
 export default function Contact() {
@@ -24,7 +29,8 @@ export default function Contact() {
         viewport={{ once: true }}
         transition={{ duration: 0.35 }}
       >
-        Open to internships, collaborations, and interesting projects.
+        Open to internships, collaborations, and interesting projects. Based in{' '}
+        {profile.location}, {profile.citizenship}.
       </motion.p>
       <div className="contact-links">
         {linkItems.map((item) => (

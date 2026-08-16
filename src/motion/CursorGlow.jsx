@@ -6,12 +6,38 @@ export default function CursorGlow() {
   const y = useSpring(0, { stiffness: 120, damping: 22 });
 
   useEffect(() => {
-    const onMove = (e) => {
-      x.set(e.clientX);
-      y.set(e.clientY);
+    let raf = 0;
+    let pending = null;
+
+    const flush = () => {
+      raf = 0;
+      if (!pending || document.hidden) return;
+      x.set(pending.clientX);
+      y.set(pending.clientY);
+      pending = null;
     };
-    window.addEventListener('pointermove', onMove);
-    return () => window.removeEventListener('pointermove', onMove);
+
+    const onMove = (e) => {
+      pending = e;
+      if (!raf) raf = requestAnimationFrame(flush);
+    };
+
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (raf) cancelAnimationFrame(raf);
+        raf = 0;
+        pending = null;
+      }
+    };
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener('pointermove', onMove);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [x, y]);
 
   const background = useMotionTemplate`radial-gradient(520px circle at ${x}px ${y}px, color-mix(in srgb, var(--accent) 9%, transparent), transparent 65%)`;

@@ -4,7 +4,13 @@ import { useRef } from 'react';
 const RADIUS = 110;
 const STRENGTH = 0.42;
 
-export default function MagneticLink({ href, children, className = '', external = false }) {
+export default function MagneticLink({
+  href,
+  children,
+  className = '',
+  external = false,
+  ...rest
+}) {
   const linkRef = useRef(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -46,6 +52,7 @@ export default function MagneticLink({ href, children, className = '', external 
       onPointerMove={onMove}
       onPointerLeave={onLeave}
       {...props}
+      {...rest}
     >
       {children}
     </motion.a>

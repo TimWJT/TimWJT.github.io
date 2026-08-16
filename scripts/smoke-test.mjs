@@ -1,0 +1,112 @@
+// Headless render smoke test: mounts the real App in jsdom and asserts on the DOM.
+import { JSDOM } from 'jsdom';
+
+const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
+  url: 'https://timwjt.github.io/',
+  pretendToBeVisual: true,
+});
+
+const { window } = dom;
+globalThis.window = window;
+globalThis.document = window.document;
+Object.defineProperty(globalThis, 'navigator', { value: window.navigator, configurable: true });
+globalThis.localStorage = window.localStorage;
+globalThis.HTMLElement = window.HTMLElement;
+globalThis.Element = window.Element;
+globalThis.Node = window.Node;
+globalThis.getComputedStyle = window.getComputedStyle;
+globalThis.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 16);
+globalThis.cancelAnimationFrame = clearTimeout;
+globalThis.matchMedia = window.matchMedia = () => ({
+  matches: false, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {},
+});
+class IO { constructor(cb) { this.cb = cb; } observe() {} unobserve() {} disconnect() {} }
+globalThis.IntersectionObserver = window.IntersectionObserver = IO;
+class RO { observe() {} unobserve() {} disconnect() {} }
+globalThis.ResizeObserver = window.ResizeObserver = RO;
+
+
+// PEEL_READY=1 stubs layout metrics so the peel section reaches its "ready"
+// state (the real-browser path with cover + reveal layers).
+if (process.env.PEEL_READY) {
+  const proto = window.Element.prototype;
+  proto.getBoundingClientRect = function () {
+    return { x: 0, y: 0, top: 0, left: 0, right: 1024, bottom: 700, width: 1024, height: 700, toJSON() {} };
+  };
+  Object.defineProperty(window.HTMLElement.prototype, 'clientWidth', { get: () => 1024, configurable: true });
+  Object.defineProperty(window.document.documentElement, 'clientWidth', { get: () => 1024, configurable: true });
+  // jsdom ships no canvas backend; stub just enough for peelMask to run.
+  const noop = () => {};
+  window.HTMLCanvasElement.prototype.getContext = () => ({
+    clearRect: noop, fillRect: noop, beginPath: noop, closePath: noop, moveTo: noop,
+    lineTo: noop, arc: noop, fill: noop, stroke: noop, save: noop, restore: noop,
+    translate: noop, rotate: noop, scale: noop, setTransform: noop, drawImage: noop,
+    createLinearGradient: () => ({ addColorStop: noop }),
+    createRadialGradient: () => ({ addColorStop: noop }),
+    putImageData: noop, getImageData: () => ({ data: new Uint8ClampedArray(4) }),
+    fillStyle: '', strokeStyle: '', globalAlpha: 1, filter: 'none',
+  });
+  window.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/png;base64,';
+}
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+const errors = [];
+const origError = console.error;
+console.error = (...a) => { errors.push(a.map(String).join(' ')); origError(...a); };
+const warns = [];
+console.warn = (...a) => { warns.push(a.map(String).join(' ')); };
+
+const React = (await import('react')).default;
+const { createRoot } = await import('react-dom/client');
+const App = (await import('../src/App.jsx')).default;
+
+const root = createRoot(document.getElementById('root'));
+const { act } = await import('react');
+await act(async () => { root.render(React.createElement(App)); });
+await new Promise((r) => setTimeout(r, 300));
+
+const html = document.getElementById('root').innerHTML;
+const $ = (s) => document.querySelectorAll(s);
+const checks = [];
+const ok = (name, cond, extra = '') => checks.push([cond ? 'PASS' : 'FAIL', name, extra]);
+
+ok('renders nav', $('nav.nav').length === 1);
+ok('nav has 5 section links + resume', $('#nav-menu li').length === 6, `got ${$('#nav-menu li').length}`);
+ok('mobile toggle present', $('button.nav-toggle').length === 1);
+ok('skip link present', $('a.skip-link').length === 1);
+ok('hero name rendered', html.includes('Tim Wang'));
+ok('hero CTAs (3 buttons per layer)', $('.hero-actions .btn').length >= 3, `got ${$('.hero-actions .btn').length}`);
+ok('resume link points at pdf', !!document.querySelector('a[href$="Tim_Wang_Resume.pdf"]'));
+ok('all 5 sections present', ['about','experience','projects','leadership','contact'].every((id) => document.getElementById(id)));
+ok('education card + WAM', html.includes('78.88') && $('.edu-card').length === 1);
+ok('experience entries = 2', $('#experience .timeline > li').length === 2, `got ${$('#experience .timeline > li').length}`);
+ok('capstone listed', html.includes('Pancreas Segmentation'));
+ok('RELT listed + linked', html.includes('Refugee English') && html.includes('reltutoring.org'));
+ok('project cards = 7', $('#projects .card').length === 7, `got ${$('#projects .card').length}`);
+ok('bot battle 2026 win shown', html.includes('1st of 94 teams'));
+ok('bot battle 2026 repo linked', html.includes('bot-battle-2026'));
+ok('featured cards = 2', $('#projects .card-featured').length === 2, `got ${$('#projects .card-featured').length}`);
+ok('leadership orgs = 4', $('#leadership .timeline > li').length === 4, `got ${$('#leadership .timeline > li').length}`);
+ok('SYNCS has 3 roles', $('#leadership .timeline > li:first-child .role-block').length === 3, `got ${$('#leadership .timeline > li:first-child .role-block').length}`);
+ok('Notion campus leader kept', html.includes('Campus Leader'));
+ok('Gym Society kept', html.includes('850+'));
+ok('Piano Society kept', html.includes('Piano Society'));
+ok('skill groups = 4', $('.skill-group').length === 4, `got ${$('.skill-group').length}`);
+ok('no external link without rel=noreferrer',
+  [...$('a[target="_blank"]')].every((a) => (a.getAttribute('rel') || '').includes('noreferrer')));
+ok('every project card has a link', [...$('#projects .card')].every((c) => c.querySelector('a[href]')));
+ok('no stale content (Tanks kept, old copy gone)', !html.includes('Godot 2D Platformer') && !html.includes('BFS tile placement'));
+ok('peel reveal layer is inert (no duplicate tab stops)',
+  [...$('.peel-reveal-layer')].every((el) => el.hasAttribute('inert')),
+  `layers=${$('.peel-reveal-layer').length}`);
+ok('only one accessible copy of hero CTAs',
+  [...$('.hero-actions')].filter((el) => !el.closest('[aria-hidden="true"]')).length === 1,
+  `visible=${[...$('.hero-actions')].filter((el) => !el.closest('[aria-hidden="true"]')).length}`);
+ok('no React errors logged', errors.length === 0, errors.slice(0, 3).join(' | '));
+
+console.log('\n--- smoke results ---');
+for (const [status, name, extra] of checks) console.log(`${status}  ${name}${extra ? '  (' + extra + ')' : ''}`);
+const failed = checks.filter((c) => c[0] === 'FAIL');
+console.log(`\n${checks.length - failed.length}/${checks.length} passed`);
+if (warns.length) console.log('warnings:', warns.slice(0, 5));
+process.exit(failed.length ? 1 : 0);
