@@ -7,7 +7,6 @@ export function defaultEffects() {
     sectionLine: false,
     scrollProgress: false,
     scrollRail: false,
-    ghostTicker: false,
     lattice: false,
     cursorGlow: false,
     pillHover: false,
@@ -37,14 +36,13 @@ export const motionPresets = [
   {
     id: 'full',
     name: 'Full',
-    description: 'Fade-in, lines, name stagger, magnetic links, card tilt, top bar, whisper, pills.',
+    description: 'Fade-in, lines, name stagger, magnetic links, card tilt, top bar, pills.',
     effects: fx({
       ...base,
       splitHeading: true,
       magneticLinks: true,
       tiltCards: true,
       scrollProgress: true,
-      ghostTicker: true,
       pillHover: true,
     }),
   },
@@ -87,8 +85,8 @@ export const motionPresets = [
   {
     id: 'whisper',
     name: 'Whisper',
-    description: 'Faded tech words breathe softly in the background behind your name.',
-    effects: fx({ scrollReveal: true, ghostTicker: true }),
+    description: 'Gentle section fade-in on scroll.',
+    effects: fx({ scrollReveal: true }),
   },
   {
     id: 'pills',

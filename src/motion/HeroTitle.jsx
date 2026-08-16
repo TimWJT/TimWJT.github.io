@@ -2,14 +2,14 @@ import { motion } from 'motion/react';
 import { useMotionPreset } from '../context/MotionContext';
 import SplitHeading from './SplitHeading';
 
-export default function HeroTitle({ text }) {
+export default function HeroTitle({ text, animate = true }) {
   const { motion: preset } = useMotionPreset();
 
   if (preset.effects.splitHeading) {
-    return <SplitHeading text={text} />;
+    return <SplitHeading text={text} animate={animate} />;
   }
 
-  if (!preset.effects.scrollReveal) {
+  if (!animate || !preset.effects.scrollReveal) {
     return <h1>{text}</h1>;
   }
 

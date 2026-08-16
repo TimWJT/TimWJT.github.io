@@ -1,0 +1,19 @@
+# Keep line endings LF in the repo regardless of which OS commits.
+# Without this, editing on Windows rewrites whole files as CRLF and every
+# line shows up as changed in the diff.
+* text=auto eol=lf
+
+# Binary assets: never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+
+# Generated build output: collapse in diffs and PR reviews.
+docs/assets/** linguist-generated=true
+package-lock.json linguist-generated=true

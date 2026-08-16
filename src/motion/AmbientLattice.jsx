@@ -29,6 +29,7 @@ export default function AmbientLattice() {
     let w = 0;
     let h = 0;
     let t = 0;
+    let accent = accentRgb();
 
     const init = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -39,6 +40,7 @@ export default function AmbientLattice() {
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      accent = accentRgb();
 
       nodesRef.current = Array.from({ length: NODE_COUNT }, (_, i) => {
         const col = i % 8;
@@ -57,10 +59,15 @@ export default function AmbientLattice() {
     };
 
     const step = () => {
+      if (document.hidden) {
+        raf = 0;
+        return;
+      }
+
       t += 0.008;
       const nodes = nodesRef.current;
       const mouse = mouseRef.current;
-      const { r, g, b } = accentRgb();
+      const { r, g, b } = accent;
 
       for (const node of nodes) {
         const ox = Math.sin(t + node.phase) * node.amp;
@@ -116,15 +123,26 @@ export default function AmbientLattice() {
 
     const onResize = () => init();
 
+    const onVisibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+        return;
+      }
+      if (!raf) step();
+    };
+
     init();
     step();
     window.addEventListener('resize', onResize);
     window.addEventListener('pointermove', onMove);
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
       window.removeEventListener('pointermove', onMove);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
 
