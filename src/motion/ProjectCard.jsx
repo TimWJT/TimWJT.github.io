@@ -67,12 +67,13 @@ export default function ProjectCard({ project, index }) {
   const className = project.featured ? 'card card-featured' : 'card';
   const inner = <CardInner project={project} />;
 
-  if (e.tiltCards) {
+  // Only apply tilt effect to featured cards for performance
+  if (e.tiltCards && project.featured) {
     return (
       <TiltCard
         index={index}
         reveal={e.scrollReveal}
-        className={project.featured ? 'card-featured' : ''}
+        className="card-featured"
       >
         {inner}
       </TiltCard>
