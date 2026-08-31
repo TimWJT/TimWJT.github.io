@@ -106,6 +106,31 @@ export const projects = [
     featured: true,
   },
   {
+    title: 'Markdown Viewer',
+    result: 'Desktop app · Windows, macOS, Linux',
+    stack: ['Rust', 'Tauri', 'JavaScript'],
+    period: 'Aug 2026',
+    context: 'Individual project · Shipped',
+    description:
+      'A markdown viewer with no editor attached. Every existing tool bundles a whole note system just to render a file, so this one does only the reading half.',
+    highlights: [
+      'Zoom is a GPU-composited scale transform rather than font resizing, so text never reflows mid-gesture and the page can be panned once it outgrows the window.',
+      'The entire UI compiles to one self-contained HTML file that makes no network requests, running unchanged in a browser or inside a 2.3 MB native shell.',
+      'Live-reloads while you edit the file in another editor, and registers itself as the system handler for .md files.',
+    ],
+    actions: [
+      { label: 'Try it in your browser', href: '/markdown-viewer/', variant: 'primary' },
+      {
+        label: 'Download',
+        href: 'https://github.com/TimWJT/markdown-viewer/releases/latest',
+        variant: 'ghost',
+        external: true,
+      },
+    ],
+    link: 'https://github.com/TimWJT/markdown-viewer',
+    featured: true,
+  },
+  {
     title: 'Lumen Fall',
     stack: ['Godot', 'GDScript'],
     period: 'Jan 2024 to Present',
