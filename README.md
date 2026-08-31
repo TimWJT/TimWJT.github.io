@@ -18,11 +18,41 @@ Open the URL in the terminal (prefers port **17331** — not 5173 if that's anot
 | `npm run dev` | Dev server with hot reload |
 | `npm run build` | Production build into `docs/` |
 | `npm run preview` | Serve the built `docs/` folder |
-| `npm test` | Headless render smoke test (28 assertions) |
+| `npm test` | Headless render smoke test, classic hero |
+| `npm run test:all` | Smoke test against both hero versions |
 
 `npm test` mounts the real app in jsdom and asserts the sections, project count,
-resume link, debug-panel gating, and accessibility invariants all still hold
-(36 assertions). Run it after editing `src/data/content.js`.
+resume link, debug-panel gating, and accessibility invariants all still hold.
+`HERO=physics npm test` runs the same suite against the physics hero; `npm run
+test:all` does both. Run after editing `src/data/content.js`.
+
+## Hero versions
+
+Two hero treatments ship in the same bundle:
+
+| Version | How to see it |
+|---------|---------------|
+| `classic` (default) | Just load the site |
+| `physics` | Add `?v2` to the URL, or flip **Hero** in the debug panel |
+
+`?hero=classic` / `?hero=physics` also work, and the choice persists in
+`localStorage` under `timwang-hero`. The classic hero stays the default until
+you change `readInitial()` in `src/context/VersionContext.jsx`, so the physics
+hero can't break the live site by accident.
+
+The physics hero (`src/motion/PhysicsHero.jsx`) runs Matter.js: the tech tags
+are real rigid bodies that drop in, pile up, and can be grabbed and thrown.
+Edit the tags via `physicsHero.tokens` in `src/data/content.js` — mark the
+headline facts `heavy` (bigger, denser, kept on mobile) and the rest `light`.
+
+Notes on how it behaves:
+
+- Matter.js is lazy-loaded, so visitors on the classic hero never download it
+- Simulation stops once the pile settles, and while the tab is hidden; a click wakes it
+- Touch drag is deliberately disabled — Matter's touch handlers call
+  `preventDefault`, which would trap the page scroll. Phones get the drop
+  animation and the **Shake** button instead
+- `prefers-reduced-motion` renders a static tag list with no physics at all
 
 ## Editing content
 

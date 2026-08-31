@@ -18,6 +18,30 @@ export const profile = {
   },
 };
 
+/**
+ * Bodies dropped into the interactive hero. `heavy` ones are the headline
+ * facts (bigger, denser, kept on mobile); `light` ones are supporting tech.
+ */
+export const physicsHero = {
+  tokens: [
+    { label: 'Bot Battle 2026: 1st of 94', weight: 'heavy' },
+    { label: 'SYNCS Co-President', weight: 'heavy' },
+    { label: 'Godot', weight: 'heavy' },
+    { label: 'Python', weight: 'heavy' },
+    { label: 'React', weight: 'light' },
+    { label: 'PyTorch', weight: 'light' },
+    { label: 'PostgreSQL', weight: 'light' },
+    { label: 'Java', weight: 'light' },
+    { label: 'C', weight: 'light' },
+    { label: 'SQL', weight: 'light' },
+    { label: 'Supabase', weight: 'light' },
+    { label: 'Optuna', weight: 'light' },
+    { label: 'GDScript', weight: 'light' },
+    { label: 'A* pathfinding', weight: 'light' },
+    { label: 'Cyber Security', weight: 'light' },
+  ],
+};
+
 export const education = {
   school: 'University of Sydney',
   degree: 'Bachelor of Advanced Computing',
@@ -79,6 +103,31 @@ export const projects = [
       'Ran a distributed optimisation pipeline across CPU cores on 2 machines, coordinating Optuna trials through Supabase-hosted PostgreSQL.',
     ],
     link: 'https://github.com/TimWJT/bot-battle-2026',
+    featured: true,
+  },
+  {
+    title: 'Markdown Viewer',
+    result: 'Desktop app · Windows, macOS, Linux',
+    stack: ['Rust', 'Tauri', 'JavaScript'],
+    period: 'Aug 2026',
+    context: 'Individual project · Shipped',
+    description:
+      'A markdown viewer with no editor attached. Every existing tool bundles a whole note system just to render a file, so this one does only the reading half.',
+    highlights: [
+      'Zoom is a GPU-composited scale transform rather than font resizing, so text never reflows mid-gesture and the page can be panned once it outgrows the window.',
+      'The entire UI compiles to one self-contained HTML file that makes no network requests, running unchanged in a browser or inside a 2.3 MB native shell.',
+      'Live-reloads while you edit the file in another editor, and registers itself as the system handler for .md files.',
+    ],
+    actions: [
+      { label: 'Try it in your browser', href: '/markdown-viewer/', variant: 'primary' },
+      {
+        label: 'Download',
+        href: 'https://github.com/TimWJT/markdown-viewer/releases/latest',
+        variant: 'ghost',
+        external: true,
+      },
+    ],
+    link: 'https://github.com/TimWJT/markdown-viewer',
     featured: true,
   },
   {
