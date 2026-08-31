@@ -352,13 +352,9 @@ main {
 .tilt-card {
   position: relative;
   overflow: hidden;
-}
-
-.tilt-glare {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
+  transition: transform 0.15s ease-out;
+  transform-style: preserve-3d;
+  perspective: 800px;
 }
 
 .card:hover {
