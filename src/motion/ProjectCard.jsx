@@ -23,6 +23,21 @@ function CardInner({ project }) {
         </ul>
       ) : null}
 
+      {project.actions?.length ? (
+        <div className="card-actions">
+          {project.actions.map((action) => (
+            <a
+              key={action.href}
+              className={`btn btn-${action.variant ?? 'ghost'}`}
+              href={action.href}
+              {...(action.external ? { target: '_blank', rel: 'noreferrer' } : {})}
+            >
+              {action.label}
+            </a>
+          ))}
+        </div>
+      ) : null}
+
       <div className="card-foot">
         <div className="skill-tags stack-tags">
           {project.stack.map((s) => (

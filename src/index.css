@@ -1386,3 +1386,17 @@ main {
     color: #555;
   }
 }
+
+/* Project cards that ship something downloadable get a row of actions
+   between the description and the stack tags. */
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.9rem 0 0.25rem;
+}
+
+.card-actions .btn {
+  font-size: 0.76rem;
+  padding: 0.5rem 0.9rem;
+}
