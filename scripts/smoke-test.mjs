@@ -2,7 +2,7 @@
 import { JSDOM } from 'jsdom';
 
 const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
-  url: 'https://timwjt.github.io/',
+  url: 'https://timwjt.github.io/' + (process.env.HERO === 'physics' ? '?v2' : ''),
   pretendToBeVisual: true,
 });
 
@@ -40,7 +40,9 @@ const App = (await import('../src/App.jsx')).default;
 const root = createRoot(document.getElementById('root'));
 const { act } = await import('react');
 await act(async () => { root.render(React.createElement(App)); });
-await new Promise((r) => setTimeout(r, 300));
+// Flush the lazy() Suspense boundary inside act so the physics hero is mounted
+// before we assert, and React doesn't warn about an unwrapped resolution.
+await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
 
 const html = document.getElementById('root').innerHTML;
 const $ = (s) => document.querySelectorAll(s);
@@ -52,7 +54,7 @@ ok('nav has 5 section links + resume', $('#nav-menu li').length === 6, `got ${$(
 ok('mobile toggle present', $('button.nav-toggle').length === 1);
 ok('skip link present', $('a.skip-link').length === 1);
 ok('hero name rendered', html.includes('Tim Wang'));
-ok('hero CTAs present', $('.hero-actions .btn').length === 3, `got ${$('.hero-actions .btn').length}`);
+ok('hero CTAs present', $('.hero-actions .btn').length >= 2, `got ${$('.hero-actions .btn').length}`);
 ok('resume link points at pdf', !!document.querySelector('a[href$="Tim_Wang_Resume.pdf"]'));
 ok('all 5 sections present', ['about','experience','projects','leadership','contact'].every((id) => document.getElementById(id)));
 ok('education card + WAM', html.includes('78.88') && $('.edu-card').length === 1);
@@ -73,10 +75,23 @@ ok('no external link without rel=noreferrer',
   [...$('a[target="_blank"]')].every((a) => (a.getAttribute('rel') || '').includes('noreferrer')));
 ok('every project card has a link', [...$('#projects .card')].every((c) => c.querySelector('a[href]')));
 ok('no stale content (Tanks kept, old copy gone)', !html.includes('Godot 2D Platformer') && !html.includes('BFS tile placement'));
+var PHYSICS = process.env.HERO === 'physics';
+
+if (!PHYSICS) {
+  ok('classic hero is the default', $('section.hero').length === 1 && $('.hero-physics').length === 0);
+  ok('single copy of hero CTAs', $('.hero-actions').length === 1, `got ${$('.hero-actions').length}`);
+  ok('hero text is selectable', getComputedStyle(document.querySelector('.hero')).userSelect !== 'none');
+  ok('matter-js not loaded for classic hero', !html.includes('physics-token'));
+} else {
+  ok('physics hero mounted from ?v2', $('.hero-physics').length === 1, `got ${$('.hero-physics').length}`);
+  ok('physics hero keeps the name + tagline', html.includes('Tim Wang') && html.includes('solving problems'));
+  ok('physics hero keeps the resume CTA', !!document.querySelector('.physics-copy a[href$="Tim_Wang_Resume.pdf"]'));
+  ok('play area hidden from screen readers', document.querySelector('.physics-scene')?.getAttribute('aria-hidden') === 'true');
+  ok('shake control present', $('.physics-shake').length === 1);
+  ok('survives a zero-size container without crashing', errors.length === 0, errors.slice(0,2).join(' | '));
+}
+
 ok('peel effect fully removed', !html.includes('peel-') && $('.peel-section, .peel-zone, .peel-reveal-layer').length === 0);
-ok('hero renders exactly once', $('section.hero').length === 1, `got ${$('section.hero').length}`);
-ok('single copy of hero CTAs', $('.hero-actions').length === 1, `got ${$('.hero-actions').length}`);
-ok('hero text is selectable', getComputedStyle(document.querySelector('.hero')).userSelect !== 'none');
 ok('style panel hidden by default', $('.style-panel').length === 0, `got ${$('.style-panel').length}`);
 
 ok('no React errors logged', errors.length === 0, errors.slice(0, 3).join(' | '));

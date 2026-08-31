@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { usePalette } from '../context/PaletteContext';
 import { useMotionPreset } from '../context/MotionContext';
 import useDebugUnlock from '../hooks/useDebugUnlock';
+import { useVersion } from '../context/VersionContext';
 
 function CycleRow({ label, name, description, index, total, onPrev, onNext, countLabel, badge }) {
   return (
@@ -32,6 +33,7 @@ export default function StylePanel() {
   const motionCtx = useMotionPreset();
   const [expanded, setExpanded] = useState(false);
   const [unlocked, setUnlocked] = useDebugUnlock();
+  const { version, toggle: toggleVersion } = useVersion();
 
   // Debug-only tool: hidden from visitors. See src/hooks/useDebugUnlock.js.
   if (!unlocked) return null;
@@ -47,6 +49,14 @@ export default function StylePanel() {
           aria-label="Hide design panel"
         >
           ✕
+        </button>
+      </div>
+
+      <div className="panel-row">
+        <p className="panel-row-label">Hero</p>
+        <button type="button" className="panel-version" onClick={toggleVersion}>
+          <strong>{version === 'physics' ? 'Physics (v2)' : 'Classic'}</strong>
+          <span>{version === 'physics' ? 'Switch back to classic' : 'Switch to physics hero'}</span>
         </button>
       </div>
 
