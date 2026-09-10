@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { advanceDock, advanceFlight, createDockState, createFlight, nudgeFlight, pokeDock } from './topPhysics';
+import { RESTING_TILT, advanceDock, advanceFlight, createDockState, createFlight, nudgeFlight, pokeDock, swipeFlight } from './topPhysics';
+import { onBlockMotion, sampleBlocks } from './blockWorld';
+import { paintAura } from './topAura';
 
 const rings = [[0, 0], [4, -7], [21, -19], [24, -23], [15, -29], [4, -30], [3, -40]];
 const colors = ['#315cd5', '#315cd5', '#e77743', '#dfc14e', '#e9ebe0', '#64704e', '#315cd5', '#e9ebe0'];
@@ -19,8 +21,8 @@ function paint(canvas, state, docked = true) {
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
   context.clearRect(0, 0, 112, 72);
   const project = (radius, y, theta) => {
-    const x = Math.cos(theta + state.angle) * radius;
-    const z = Math.sin(theta + state.angle) * radius;
+    const x = Math.cos(theta + state.angle + (state.spinOffset || 0)) * radius;
+    const z = Math.sin(theta + state.angle + (state.spinOffset || 0)) * radius;
     const tiltedX = x * Math.cos(state.tilt) - y * Math.sin(state.tilt);
     const tiltedY = x * Math.sin(state.tilt) + y * Math.cos(state.tilt);
     return { x: tiltedX, y: tiltedY * 0.92 - z * 0.38, z: z * 0.92 + tiltedY * 0.38 };
@@ -71,13 +73,14 @@ export default function SpinningTop() {
   const buttonRef = useRef(null);
   const floatingRef = useRef(null);
   const flightCanvasRef = useRef(null);
+  const auraRef = useRef(null);
   const controls = useRef({});
   const [scene, setScene] = useState(null);
 
   useEffect(() => {
     const hero = document.querySelector('.hero-stage');
     if (!hero) return;
-    setScene(hero);
+    setScene(document.body);
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
     let dock = createDockState();
     let flight = null;
@@ -85,6 +88,9 @@ export default function SpinningTop() {
     let frame = 0;
     let previousTime = null;
     let phaseTime = 0;
+    let ticking = false;
+    let pointer = null;
+    let lastSwipe = -Infinity;
 
     const render = () => {
       const button = buttonRef.current;
@@ -97,10 +103,13 @@ export default function SpinningTop() {
       if (!floating) return;
       floating.hidden = phase !== 'deployed';
       if (flight && phase === 'deployed') {
-        floating.style.transform = `translate3d(${flight.x - 43}px, ${flight.y - 60}px, 0)`;
+        const bounds = hero.getBoundingClientRect();
+        floating.style.transform = `translate3d(${bounds.left + flight.x - 43}px, ${bounds.top + flight.y - 60}px, 0)`;
         floating.dataset.x = flight.x.toFixed(2);
         floating.dataset.y = flight.y.toFixed(2);
+        floating.dataset.swipeSpin = (flight.swipeSpin || 0).toFixed(3);
         paint(flightCanvasRef.current, flight, false);
+        paintAura(auraRef.current, flight, bounds);
       }
     };
     const reset = () => {
@@ -111,6 +120,7 @@ export default function SpinningTop() {
       phase = 'idle';
       phaseTime = 0;
       flight = null;
+      pointer = null;
       dock = createDockState();
       render();
       if (restoreFocus) buttonRef.current.focus({ preventScroll: true });
@@ -137,12 +147,15 @@ export default function SpinningTop() {
         else if (phaseTime > 4) { reset(); return; }
       } else if (phase === 'launching') {
         phaseTime += dt;
-        dock.tilt = dock.side * Math.min(1.25, phaseTime * 4);
+        dock.tilt = dock.side * Math.min(RESTING_TILT, phaseTime * 4);
         if (phaseTime > 0.32) launch();
       } else if (phase === 'deployed') {
         const bounds = hero.getBoundingClientRect();
         if (bounds.bottom <= 80 || bounds.top >= window.innerHeight) { reset(); return; }
-        moving = advanceFlight(flight, dt, bounds);
+        ticking = true;
+        try {
+          moving = advanceFlight(flight, dt, { width: bounds.width, height: bounds.height, ceiling: 54 - bounds.top }, sampleBlocks(bounds));
+        } finally { ticking = false; }
       } else if (phase === 'wobbling') {
         moving = advanceDock(dock, dt);
         if (!moving) phase = 'idle';
@@ -167,9 +180,14 @@ export default function SpinningTop() {
         render();
         wake();
       },
-      nudge() {
+      nudge(event, keyboardHit) {
         if (!flight || phase !== 'deployed') return;
-        nudgeFlight(flight);
+        const bounds = hero.getBoundingClientRect();
+        const hit = keyboardHit ?? (event?.type === 'pointerdown' ? {
+          x: event.clientX - (bounds.left + flight.x + Math.sin(flight.tilt) * 14),
+          y: event.clientY - (bounds.top + flight.y - 22),
+        } : { x: 0, y: 0 });
+        nudgeFlight(flight, hit);
         wake();
       },
       reset,
@@ -179,11 +197,36 @@ export default function SpinningTop() {
       if (phase !== 'deployed') return;
       const bounds = hero.getBoundingClientRect();
       if (bounds.bottom <= 80 || bounds.top >= window.innerHeight) reset();
+      else render();
     };
     const cancelReturn = () => { if (phase === 'returning') reset(); };
+    const swipe = event => {
+      const now = window.performance.now();
+      const previous = pointer;
+      pointer = { x: event.clientX, y: event.clientY, time: now };
+      if (event.pointerType !== 'mouse' || event.buttons || !previous || !flight || phase !== 'deployed' || document.hidden) return;
+      const elapsed = now - previous.time;
+      const dx = pointer.x - previous.x;
+      const dy = pointer.y - previous.y;
+      const distance = Math.hypot(dx, dy);
+      if (elapsed > 120 || distance < 3 || now - lastSwipe < 150) return;
+      const bounds = hero.getBoundingClientRect();
+      const x = bounds.left + flight.x + Math.sin(flight.tilt) * 14;
+      const y = bounds.top + flight.y - 22;
+      // Check the swept segment so quick passes still hit the small toy.
+      const t = Math.max(0, Math.min(1, ((x - previous.x) * dx + (y - previous.y) * dy) / (distance * distance)));
+      if (Math.hypot(previous.x + dx * t - x, previous.y + dy * t - y) > 26) return;
+      lastSwipe = now;
+      swipeFlight(flight, distance / Math.max(8, elapsed) * 1000);
+      render();
+      wake();
+    };
     const resize = () => {
       scroll();
-      if (phase === 'deployed') advanceFlight(flight, 1 / 60, hero.getBoundingClientRect());
+      if (phase === 'deployed') {
+        const bounds = hero.getBoundingClientRect();
+        advanceFlight(flight, 1 / 60, { width: bounds.width, height: bounds.height, ceiling: 54 - bounds.top }, sampleBlocks(bounds));
+      }
       render();
     };
     const key = event => {
@@ -197,16 +240,20 @@ export default function SpinningTop() {
       if (!document.hidden && phase !== 'idle') wake();
     };
     window.addEventListener('scroll', scroll, { passive: true });
+    window.addEventListener('pointermove', swipe, { passive: true });
     window.addEventListener('resize', resize);
     window.addEventListener('wheel', cancelReturn, { passive: true });
     window.addEventListener('touchstart', cancelReturn, { passive: true });
     window.addEventListener('keydown', key);
     document.addEventListener('visibilitychange', visibility);
+    const unsubscribe = onBlockMotion(() => { if (phase === 'deployed' && !ticking) wake(); });
     render();
     return () => {
       controls.current = {};
+      unsubscribe();
       window.cancelAnimationFrame(frame);
       window.removeEventListener('scroll', scroll);
+      window.removeEventListener('pointermove', swipe);
       window.removeEventListener('resize', resize);
       window.removeEventListener('wheel', cancelReturn);
       window.removeEventListener('touchstart', cancelReturn);
@@ -220,7 +267,20 @@ export default function SpinningTop() {
       <canvas ref={canvasRef} width="112" height="72" aria-hidden="true" />
     </button>
     {scene && createPortal(
-      <button ref={floatingRef} className="deployed-top" type="button" hidden onClick={() => controls.current.nudge?.()} aria-label="Nudge the top. Escape returns it to its stand.">
+      <button ref={floatingRef} className="deployed-top" type="button" hidden
+        onPointerDown={event => {
+          if (event.button !== 0) return;
+          event.preventDefault();
+          event.currentTarget.focus({ preventScroll: true });
+          controls.current.nudge?.(event);
+        }}
+        onClick={event => { if (event.detail === 0) controls.current.nudge?.(); }}
+        onKeyDown={event => {
+          const hits = { ArrowLeft: { x: 24, y: 0 }, ArrowRight: { x: -24, y: 0 }, ArrowUp: { x: 0, y: 24 }, ArrowDown: { x: 0, y: -24 } };
+          if (hits[event.key]) { event.preventDefault(); controls.current.nudge?.(null, hits[event.key]); }
+        }}
+        aria-label="Push the top away from where you tap. Arrow keys steer; Space jumps; Escape returns it to its stand.">
+        <canvas ref={auraRef} className="top-aura" width="240" height="240" aria-hidden="true" />
         <canvas ref={flightCanvasRef} width="112" height="72" aria-hidden="true" />
       </button>, scene,
     )}
