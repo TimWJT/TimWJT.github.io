@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vite-node scripts/smoke-test.mjs",
-    "test:all": "vite-node scripts/smoke-test.mjs && HERO=physics vite-node scripts/smoke-test.mjs"
+    "test:all": "vite-node scripts/smoke-test.mjs"
   },
   "dependencies": {
     "matter-js": "^0.20.0",

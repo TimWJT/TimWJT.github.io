@@ -1,122 +1,183 @@
-// Headless render smoke test: mounts the real App in jsdom and asserts on the DOM.
 import { JSDOM } from 'jsdom';
+import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import { createDockState, pokeDock, advanceDock, createFlight, advanceFlight } from '../src/motion/topPhysics.js';
 
-const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
-  url: 'https://timwjt.github.io/' + (process.env.HERO === 'physics' ? '?v2' : ''),
-  pretendToBeVisual: true,
-});
-
-const { window } = dom;
-globalThis.window = window;
-globalThis.document = window.document;
-Object.defineProperty(globalThis, 'navigator', { value: window.navigator, configurable: true });
-globalThis.localStorage = window.localStorage;
-globalThis.HTMLElement = window.HTMLElement;
-globalThis.Element = window.Element;
-globalThis.Node = window.Node;
-globalThis.getComputedStyle = window.getComputedStyle;
-globalThis.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 16);
-globalThis.cancelAnimationFrame = clearTimeout;
-globalThis.matchMedia = window.matchMedia = () => ({
-  matches: false, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {},
-});
-class IO { constructor(cb) { this.cb = cb; } observe() {} unobserve() {} disconnect() {} }
-globalThis.IntersectionObserver = window.IntersectionObserver = IO;
-class RO { observe() {} unobserve() {} disconnect() {} }
-globalThis.ResizeObserver = window.ResizeObserver = RO;
-
-
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-const errors = [];
-const origError = console.error;
-console.error = (...a) => { errors.push(a.map(String).join(' ')); origError(...a); };
-const warns = [];
-console.warn = (...a) => { warns.push(a.map(String).join(' ')); };
-
-const React = (await import('react')).default;
-const { createRoot } = await import('react-dom/client');
-const App = (await import('../src/App.jsx')).default;
-
-const root = createRoot(document.getElementById('root'));
-const { act } = await import('react');
-await act(async () => { root.render(React.createElement(App)); });
-// Flush the lazy() Suspense boundary inside act so the physics hero is mounted
-// before we assert, and React doesn't warn about an unwrapped resolution.
-await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
-
-const html = document.getElementById('root').innerHTML;
-const $ = (s) => document.querySelectorAll(s);
-const checks = [];
-const ok = (name, cond, extra = '') => checks.push([cond ? 'PASS' : 'FAIL', name, extra]);
-
-ok('renders nav', $('nav.nav').length === 1);
-ok('nav has 5 section links + resume', $('#nav-menu li').length === 6, `got ${$('#nav-menu li').length}`);
-ok('mobile toggle present', $('button.nav-toggle').length === 1);
-ok('skip link present', $('a.skip-link').length === 1);
-ok('hero name rendered', html.includes('Tim Wang'));
-ok('hero CTAs present', $('.hero-actions .btn').length >= 2, `got ${$('.hero-actions .btn').length}`);
-ok('resume link points at pdf', !!document.querySelector('a[href$="Tim_Wang_Resume.pdf"]'));
-ok('all 5 sections present', ['about','experience','projects','leadership','contact'].every((id) => document.getElementById(id)));
-ok('education card + WAM', html.includes('78.88') && $('.edu-card').length === 1);
-ok('experience entries = 2', $('#experience .timeline > li').length === 2, `got ${$('#experience .timeline > li').length}`);
-ok('capstone listed', html.includes('Pancreas Segmentation'));
-ok('RELT listed + linked', html.includes('Refugee English') && html.includes('reltutoring.org'));
-ok('project cards = 7', $('#projects .card').length === 7, `got ${$('#projects .card').length}`);
-ok('bot battle 2026 win shown', html.includes('1st of 94 teams'));
-ok('bot battle 2026 repo linked', html.includes('bot-battle-2026'));
-ok('featured cards = 2', $('#projects .card-featured').length === 2, `got ${$('#projects .card-featured').length}`);
-ok('leadership orgs = 4', $('#leadership .timeline > li').length === 4, `got ${$('#leadership .timeline > li').length}`);
-ok('SYNCS has 3 roles', $('#leadership .timeline > li:first-child .role-block').length === 3, `got ${$('#leadership .timeline > li:first-child .role-block').length}`);
-ok('Notion campus leader kept', html.includes('Campus Leader'));
-ok('Gym Society kept', html.includes('850+'));
-ok('Piano Society kept', html.includes('Piano Society'));
-ok('skill groups = 4', $('.skill-group').length === 4, `got ${$('.skill-group').length}`);
-ok('no external link without rel=noreferrer',
-  [...$('a[target="_blank"]')].every((a) => (a.getAttribute('rel') || '').includes('noreferrer')));
-ok('every project card has a link', [...$('#projects .card')].every((c) => c.querySelector('a[href]')));
-ok('no stale content (Tanks kept, old copy gone)', !html.includes('Godot 2D Platformer') && !html.includes('BFS tile placement'));
-var PHYSICS = process.env.HERO === 'physics';
-
-if (!PHYSICS) {
-  ok('classic hero is the default', $('section.hero').length === 1 && $('.hero-physics').length === 0);
-  ok('single copy of hero CTAs', $('.hero-actions').length === 1, `got ${$('.hero-actions').length}`);
-  ok('hero text is selectable', getComputedStyle(document.querySelector('.hero')).userSelect !== 'none');
-  ok('matter-js not loaded for classic hero', !html.includes('physics-token'));
-} else {
-  ok('physics hero mounted from ?v2', $('.hero-physics').length === 1, `got ${$('.hero-physics').length}`);
-  ok('physics hero keeps the name + tagline', html.includes('Tim Wang') && html.includes('solving problems'));
-  ok('physics hero keeps the resume CTA', !!document.querySelector('.physics-copy a[href$="Tim_Wang_Resume.pdf"]'));
-  ok('play area hidden from screen readers', document.querySelector('.physics-scene')?.getAttribute('aria-hidden') === 'true');
-  ok('shake control present', $('.physics-shake').length === 1);
-  ok('survives a zero-size container without crashing', errors.length === 0, errors.slice(0,2).join(' | '));
+const dock = createDockState();
+assert.equal(dock.tilt,0,'Docked top starts upright');
+assert.equal(advanceDock(dock,1/60),false,'Idle top has no animation loop');
+assert.equal(pokeDock(dock,()=>0.2),false,'One click only wobbles');
+for(let i=0;i<300;i++) advanceDock(dock,1/60);
+assert.equal(dock.charge,0,'Separated clicks do not accumulate forever');
+assert.equal(dock.tilt,0,'A single wobble settles upright');
+for(let i=0;i<3;i++) assert.equal(pokeDock(dock,()=>0.2),false,'First three rapid clicks stay docked');
+assert.equal(pokeDock(dock,()=>0.2),true,'Fourth rapid click deploys');
+const bounds={width:900,height:500};
+const leftFlight=createFlight(bounds,{x:45,y:-20},-1,()=>0.15);
+const rightFlight=createFlight(bounds,{x:45,y:-20},1,()=>0.85);
+assert.notEqual(leftFlight.fallSide,rightFlight.fallSide,'Different launches can fall on either side');
+assert.notEqual(leftFlight.vx,rightFlight.vx,'Launch destination varies');
+for(let i=0;i<2400;i++) {
+ advanceFlight(leftFlight,1/60,bounds);
+ advanceFlight(rightFlight,1/60,bounds);
+ assert.ok(leftFlight.x>=45 && leftFlight.x<=855 && leftFlight.y<=488,'Physics stays inside hero walls and floor');
 }
-
-ok('peel effect fully removed', !html.includes('peel-') && $('.peel-section, .peel-zone, .peel-reveal-layer').length === 0);
-ok('style panel hidden by default', $('.style-panel').length === 0, `got ${$('.style-panel').length}`);
-
-ok('no React errors logged', errors.length === 0, errors.slice(0, 3).join(' | '));
-
-// --- scenario 2: the secret unlock reveals the debug panel ---
-for (const ch of 'design') {
-  await act(async () => {
-    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: ch, bubbles: true }));
-  });
+assert.ok(leftFlight.collisions>0,'Deployed top bounces on landing');
+assert.ok(leftFlight.tilt < -1 && rightFlight.tilt > 1,'Fall direction is not fixed');
+assert.equal(advanceFlight(leftFlight,1/60,bounds),false,'Settled physics stops');
+const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {url:'https://timwjt.github.io/', pretendToBeVisual:true});
+const {window} = dom;
+globalThis.window=window;
+globalThis.document=window.document;
+Object.defineProperty(globalThis,'navigator',{value:window.navigator,configurable:true});
+globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+const mediaListeners = new Set();
+const motionPreference = {
+ matches: false,
+ addEventListener: (_, callback) => mediaListeners.add(callback),
+ removeEventListener: (_, callback) => mediaListeners.delete(callback),
+};
+window.matchMedia = () => motionPreference;
+let nextFrame = 0;
+const frames = new Map();
+window.requestAnimationFrame = callback => { frames.set(++nextFrame, callback); return nextFrame; };
+window.cancelAnimationFrame = id => frames.delete(id);
+let frameTime = 0;
+const flushFrames = () => { frameTime += 16; const pending = [...frames.values()]; frames.clear(); pending.forEach(callback => callback(frameTime)); };
+window.HTMLCanvasElement.prototype.getContext = () => new Proxy({}, { get: (target, property) => target[property] ?? (() => {}), set: (target, property, value) => { target[property] = value; return true; } });
+const React=(await import('react')).default;
+const {act}=await import('react');
+const {createRoot}=await import('react-dom/client');
+const App=(await import('../src/App.jsx')).default;
+const {projects,experience,leadership}=await import('../src/data/content.js');
+const root=createRoot(document.getElementById('root'));
+const errors=[];
+const originalError=console.error;
+console.error=(...args)=>{errors.push(args);originalError(...args);};
+await act(async()=>root.render(React.createElement(App)));
+const $=selector=>document.querySelector(selector);
+const $$=selector=>[...document.querySelectorAll(selector)];
+assert.equal($$('h1').length,1,'One page heading');
+assert.match($('h1').textContent,/TimWang/);
+for(const id of ['projects','about','experience','leadership','contact']) assert.ok(document.getElementById(id),`${id} section exists`);
+assert.equal($$('.project').length,projects.length,'Every project retained');
+assert.equal($$('.experience-row').length,experience.length,'Every experience retained');
+assert.equal($$('.community-row').length,leadership.length,'Every community retained');
+assert.equal($$('.role-block').length,leadership.reduce((sum,org)=>sum+org.roles.length,0),'All role history retained');
+for(const link of $$('a[href^="#"]')) assert.ok($(link.getAttribute('href')),`Anchor ${link.getAttribute('href')} resolves`);
+for(const link of $$('a[target="_blank"]')) assert.ok(link.rel.includes('noreferrer'),'External links have safe rel');
+for(const project of projects) assert.ok($$('.project a').some(link=>link.href===project.link),`${project.title} link retained`);
+for(const href of ['/Tim_Wang_Resume.pdf','/markdown-viewer/']) {
+ assert.ok($$(`a[href="${href}"]`).length,`${href} linked`);
+ assert.ok(existsSync(`public${href}${href.endsWith('/')?'index.html':''}`),`${href} asset exists`);
 }
-await new Promise((r) => setTimeout(r, 50));
-ok('typing the secret reveals the panel', $('.style-panel').length === 1, `got ${$('.style-panel').length}`);
-ok('panel has a close button', $('.panel-close').length === 1);
-ok('unlock is persisted', window.localStorage.getItem('timwang-debug') === '1');
-
-await act(async () => {
-  window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-});
-await new Promise((r) => setTimeout(r, 50));
-ok('Escape hides the panel again', $('.style-panel').length === 0);
-ok('unlock flag cleared on hide', window.localStorage.getItem('timwang-debug') === null);
-
-console.log('\n--- smoke results ---');
-for (const [status, name, extra] of checks) console.log(`${status}  ${name}${extra ? '  (' + extra + ')' : ''}`);
-const failed = checks.filter((c) => c[0] === 'FAIL');
-console.log(`\n${checks.length - failed.length}/${checks.length} passed`);
-if (warns.length) console.log('warnings:', warns.slice(0, 5));
-process.exit(failed.length ? 1 : 0);
+assert.equal($('.project-archive').open,false,'Archive starts collapsed');
+const archive=$('.project-archive');
+await act(async()=>archive.querySelector('summary').click());
+assert.equal(archive.open,true,'Archive expands');
+const details=$('.project-details');
+await act(async()=>details.querySelector('summary').click());
+assert.equal(details.open,true,'Project details expand');
+const toggle=$('.nav-toggle');
+await act(async()=>toggle.click());
+assert.equal(toggle.getAttribute('aria-expanded'),'true','Menu opens');
+await act(async()=>window.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape'})));
+assert.equal(toggle.getAttribute('aria-expanded'),'false','Escape closes menu');
+await act(async()=>toggle.click());
+await act(async()=>$('#nav-menu a').click());
+assert.equal(toggle.getAttribute('aria-expanded'),'false','Navigation closes menu');
+assert.equal($$('.play-square[role="button"][tabindex="0"]').length,4,'All squares have keyboard controls');
+assert.ok($('.top-toy').getAttribute('aria-label').includes('Wobble'),'Top has nonvisual accessible instructions');
+assert.equal($$('.top-push,.square-grip,.square-caption').length,0,'No visible instruction icons or drag labels');
+assert.equal($('.top-toy').title,'','No tooltip instructions');
+assert.equal($('nav .wordmark'),null,'Header name is replaced by top');
+assert.equal($$('.hero-geometry rect').length, 4, 'Geometric hero is rendered');
+assert.ok(!/[\u00c2\u00c3]|\u00e2[\u0080-\u00ff\u2000-\u2122]|\ufffd/.test(document.body.textContent), 'No corrupted Unicode in rendered copy');
+assert.ok($('#work-title').textContent.includes("Things I\u2019ve"), 'Apostrophe renders correctly');
+const square = $('.play-square');
+await act(async()=>square.dispatchEvent(new window.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true})));
+assert.ok(square.getAttribute('transform').includes('translate(24 0)'), 'Keyboard can move a square');
+await act(async()=>square.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Home',bubbles:true})));
+assert.ok(square.getAttribute('transform').includes('translate(0 0)'), 'Home resets square');
+const pointer = (type,x,y) => {
+ const event=new window.MouseEvent(type,{clientX:x,clientY:y,button:0,bubbles:true});
+ Object.defineProperty(event,'pointerId',{value:7});
+ return event;
+};
+await act(async()=>square.dispatchEvent(pointer('pointerdown',100,100)));
+await act(async()=>square.dispatchEvent(pointer('pointermove',150,125)));
+assert.ok(square.getAttribute('transform').includes('translate(50 25)'), 'Pointer drag moves square');
+await act(async()=>square.dispatchEvent(pointer('pointercancel',150,125)));
+assert.ok(square.getAttribute('transform').includes('translate(0 0)'), 'Cancelled pointer restores square');
+const stage = $('.hero-stage');
+const scene = $('.hero-scroll-scene');
+stage.getBoundingClientRect = () => ({top:90,bottom:490,height:400});
+scene.getBoundingClientRect = () => ({top:-110,bottom:690,height:800});
+window.dispatchEvent(new window.Event('scroll'));
+flushFrames();
+assert.equal(stage.style.getPropertyValue('--scene-progress'),'0.5','Hero responds to scroll');
+assert.ok($('.square-scroll').getAttribute('transform').includes('rotate(-45'),'Scroll choreographs square rotation');
+motionPreference.matches = true;
+mediaListeners.forEach(callback => callback());
+assert.equal(stage.style.getPropertyValue('--scene-progress'),'','Reduced motion resets the artwork');
+window.dispatchEvent(new window.Event('scroll'));
+assert.equal(frames.size,0,'Reduced motion removes the scroll handler');
+motionPreference.matches = false;
+mediaListeners.forEach(callback => callback());
+assert.equal(stage.style.getPropertyValue('--scene-progress'),'0.5','Motion preference can change live');
+const top = $('.top-toy');
+assert.equal(top.dataset.state,'idle','Rendered top starts inactive');
+assert.equal(top.dataset.tilt,'0.000','Rendered top is upright');
+const idleAngle=top.dataset.angle;
+window.dispatchEvent(new window.WheelEvent('wheel',{deltaY:800}));
+window.dispatchEvent(new window.Event('scroll'));
+flushFrames();
+assert.equal(top.dataset.state,'idle','Scroll and wheel do not activate the top');
+assert.equal(top.dataset.angle,idleAngle,'Scrolling does not spin it');
+await act(async()=>top.click());
+flushFrames();
+assert.equal(top.dataset.state,'wobbling','One click starts wobbling');
+assert.notEqual(top.dataset.tilt,'0.000','Wobble changes the rendered tilt');
+for(let i=0;i<300;i++) flushFrames();
+assert.equal(top.dataset.state,'idle','Wobble returns to idle without enough clicks');
+stage.getBoundingClientRect = () => ({top:96,left:40,width:900,height:400,bottom:496});
+top.getBoundingClientRect = () => ({top:8,left:40,width:112,height:72,bottom:80});
+for(let i=0;i<4;i++) await act(async()=>top.click());
+assert.equal(top.dataset.state,'launching','Four clicks begin deployment');
+for(let i=0;i<30;i++) flushFrames();
+assert.equal(top.dataset.state,'deployed','Top deploys into hero');
+const floating=$('.deployed-top');
+assert.equal(floating.parentElement,stage,'Toy is attached only to hero');
+assert.equal(floating.hidden,false,'Deployed top is visible');
+const initialX=floating.dataset.x;
+for(let i=0;i<40;i++) flushFrames();
+assert.notEqual(floating.dataset.x,initialX,'Deployed toy travels horizontally');
+stage.getBoundingClientRect = () => ({top:-700,left:40,width:900,height:400,bottom:-300});
+window.dispatchEvent(new window.Event('scroll'));
+assert.equal(top.dataset.state,'idle','Leaving hero returns toy to the dock');
+assert.equal(floating.hidden,true,'Toy does not intrude into reading sections');
+window.scrollY=1500;
+let requestedScroll=null;
+window.scrollTo=options=>{requestedScroll=options;};
+for(let i=0;i<4;i++) await act(async()=>top.click());
+assert.equal(top.dataset.state,'returning','Activation down the page waits for return');
+assert.equal(requestedScroll.top,0,'Activation requests return to top');
+assert.equal(floating.hidden,true,'No deployed toy over lower sections');
+window.scrollY=0;
+stage.getBoundingClientRect = () => ({top:96,left:40,width:900,height:400,bottom:496});
+for(let i=0;i<35;i++) flushFrames();
+assert.equal(top.dataset.state,'deployed','Deployment happens after returning to top');
+await act(async()=>window.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape'})));
+assert.equal(top.dataset.state,'idle','Escape returns toy to the dock');
+window.scrollY=1500;
+for(let i=0;i<4;i++) await act(async()=>top.click());
+window.dispatchEvent(new window.WheelEvent('wheel',{deltaY:100}));
+assert.equal(top.dataset.state,'idle','Manual scrolling cancels an in-progress return');
+window.scrollY=0;
+assert.equal(errors.length,0,'No React errors');
+await act(async()=>root.unmount());
+assert.equal(mediaListeners.size,0,'Unmount cleans up media listener');
+assert.equal(frames.size,0,'Unmount cancels animation frames');
+console.error=originalError;
+console.log('PASS: content, project links, assets, anchors, disclosures, mobile navigation, and React render.');
+window.close();
