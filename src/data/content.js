@@ -1,7 +1,7 @@
 export const profile = {
   name: 'Tim Wang',
   legalName: 'Juntian Wang',
-  tagline: 'Building games, running communities, solving problems.',
+  tagline: 'Software, games, and communities.',
   roles: [
     'Advanced Computing @ USYD',
     'SYNCS Co-President',
@@ -70,8 +70,8 @@ export const experience = [
     context: 'Capstone · 7-person team · Client: University of Sydney',
     stack: ['Python', 'PyTorch', 'nnU-Net', 'MONAI'],
     highlights: [
-      'Developing a deep learning model to segment the pancreas from CT and MRI scans, targeting benchmark accuracy against state-of-the-art models.',
-      'Evaluating generalisability across multi-centre datasets for open-source release to the research community.',
+      'Working in a seven-person capstone team on a deep learning model that identifies the pancreas in CT and MRI scans.',
+      'Testing the model on datasets from different medical centres, with an open-source release planned for researchers.',
     ],
   },
   {
@@ -82,8 +82,8 @@ export const experience = [
     stack: ['SQL', 'Web Development'],
     link: 'https://www.reltutoring.org/',
     highlights: [
-      'Replacing a manual Excel workflow with a SQL-backed web application for a charity serving 200+ weekly participants.',
-      'Designing an automated matching algorithm to replace manual review, pairing on availability, language, and goals.',
+      'Building a web application for a charity that supports more than 200 participants each week, replacing its manual spreadsheet workflow.',
+      'Developing a matching system that pairs tutors and learners by availability, language, and learning goals.',
     ],
   },
 ];
@@ -96,7 +96,7 @@ export const projects = [
     period: 'Jul 2026',
     context: 'Primary developer · 2-person team · Agar.io environment',
     description:
-      'Susquehanna x SYNCS annual two-week competition to build an autonomous bot for a new game environment each year.',
+      'An autonomous game-playing bot that took first place out of 94 teams. I built its decision-making system and a planner that weighs the risks and rewards of each move.',
     highlights: [
       'Engineered the decision-making system, using game-state tracking to coordinate survival, pursuit, and resource-gathering.',
       'Built a predictive planner evaluating up to 36 movement directions across 14 future time steps, selecting actions by net present value of projected rewards and risks.',
@@ -112,7 +112,7 @@ export const projects = [
     period: 'Aug 2026',
     context: 'Individual project · Shipped',
     description:
-      'A markdown viewer with no editor attached. Every existing tool bundles a whole note system just to render a file, so this one does only the reading half.',
+      'A small desktop app for reading Markdown files, with smooth zoom, live reload, and no account or internet connection required.',
     highlights: [
       'Zoom is a GPU-composited scale transform rather than font resizing, so text never reflows mid-gesture and the page can be panned once it outgrows the window.',
       'The entire UI compiles to one self-contained HTML file that makes no network requests, running unchanged in a browser or inside a 2.3 MB native shell.',
@@ -136,7 +136,7 @@ export const projects = [
     period: 'Jan 2024 to Present',
     context: '2D action game · 2-person team · In development',
     description:
-      'A 2D action game built on systems designed to be extended rather than rewritten.',
+      'A 2D action game I’m building with a teammate. My focus is the combat system and enemy navigation, including pathfinding that accounts for jumps and level geometry.',
     highlights: [
       'Designed a modular, data-driven combat framework supporting 100+ weapon configurations through reusable components.',
       'Developed a physics-aware A* navigation system that constructs paths from level geometry and validates jumps.',
@@ -150,7 +150,7 @@ export const projects = [
     period: 'Jun 2026 to Present',
     context: 'Individual project · In development',
     description:
-      'Real-time multiplayer web game with room creation, timed rounds, live results, and leaderboards.',
+      'A multiplayer web game with shared rooms, timed rounds, and live leaderboards.',
     link: 'https://meta-game-arena.vercel.app/',
   },
   {
@@ -160,7 +160,7 @@ export const projects = [
     period: 'Jun 2026',
     context: '4-person team · 72-hour USYD Game Jam',
     description:
-      'Browser-playable strategy game shipped in 72 hours at an event with 200 participants across 44 teams.',
+      'A browser strategy game our four-person team made in 72 hours for the USYD Game Jam. It won a Special Category Award.',
     highlights: [
       'Built a reusable object-oriented framework for 10+ enemy types with configurable spawning, progression, and difficulty scaling.',
     ],
@@ -173,7 +173,7 @@ export const projects = [
     period: 'Jul 2025',
     context: 'Primary developer · 4-person team · Carcassonne environment',
     description:
-      'Bot simulating every tile placement and rotation, scoring structures by ownership and completion likelihood.',
+      'A Carcassonne bot that compares tile placements and rotations to find the most promising move. Our team placed third out of 28.',
     link: 'https://github.com/TimWJT/syncs-bot-battle-2025-carcassonne',
   },
   {
@@ -183,7 +183,7 @@ export const projects = [
     period: 'Jul 2024',
     context: 'Individual project · Risk environment',
     description:
-      'Multi-phase decision engine that adapted expansion, attack, and defence to map control and opponent strength.',
+      'A Risk bot that adapts its strategy to the map and its opponents. My first Bot Battle entry, finishing seventh out of 72 teams.',
     link: 'https://github.com/TimWJT/syncs-bot-battle-2024-risk',
   },
   {
@@ -192,7 +192,7 @@ export const projects = [
     period: '2024',
     context: 'Individual project',
     description:
-      'Classic tanks recreation applying OOP design principles and Java UI patterns.',
+      'A recreation of the classic tanks game in Java, built to explore object-oriented game design.',
     link: 'https://github.com/TimWJT',
   },
 ];
@@ -206,7 +206,7 @@ export const leadership = [
         title: 'Co-President',
         period: 'Sep 2025 to Present',
         highlights: [
-          'Co-lead a 54-person executive and subcommittee team serving 5,000+ members, providing direction and oversight across 8 portfolios.',
+          'I co-lead a team of 54 students running events and programs for more than 5,000 members.',
           'Manage relations with the School of Computer Science and the Faculty of Engineering, and represent SYNCS in industry partnerships.',
           'Launched a food sponsorship initiative, established a competition events portfolio, and rebuilt the Notion workspace.',
         ],
@@ -236,7 +236,7 @@ export const leadership = [
         title: 'Campus Leader',
         period: 'Aug 2026 to Present',
         highlights: [
-          'Selected as a student ambassador to grow campus adoption through workshops, templates, and product feedback.',
+          'Helping students use Notion through workshops, templates, and feedback to the product team.',
         ],
       },
     ],
@@ -248,7 +248,7 @@ export const leadership = [
         title: 'Secretary and Co-Founder',
         period: 'Jan 2025 to Present',
         highlights: [
-          'Grew membership from 0 to 850+ in the society’s first year.',
+          'Helped start the society and grow it to more than 850 members in its first year.',
           'Planned community events and coordinated the executive team.',
         ],
       },
