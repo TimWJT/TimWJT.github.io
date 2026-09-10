@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { profile, education, experience, projects, leadership, skills } from './data/content';
 import SpinningTop from './motion/SpinningTop';
+import FooterLanding from './motion/FooterLanding';
+import TouchWord from './motion/TouchWord';
 import PlayfulSquares from './motion/PlayfulSquares';
 import './index.css';
 const Arrow = () => <span aria-hidden="true">↗</span>;
@@ -150,6 +152,19 @@ function Community() {
 }
 
 function Contact() {
-  return <footer id="contact" className="contact"><div className="wrap"><SectionLabel number="05">Get in touch</SectionLabel><div className="contact-heading"><h2>Have something<br /><em>in mind?</em></h2><a className="contact-arrow" href={`mailto:${profile.email}`} aria-label="Email Tim Wang"><Arrow /></a></div><a className="contact-email" href={`mailto:${profile.email}`}>{profile.email}</a><div className="footer-bottom"><a className="wordmark" href="#top">tim wang</a><span>Sydney, Australia</span><div><External href={profile.links.github}>GitHub <Arrow /></External><External href={profile.links.linkedin}>LinkedIn <Arrow /></External><External href={resume}>Résumé <Arrow /></External></div><a className="back-top" href="#top">Back to top ↑</a></div></div></footer>;
+  return <footer id="contact" className="contact">
+    <div className="wrap contact-content">
+      <h2>Get in <TouchWord /></h2>
+      <nav className="contact-links" aria-label="Contact and profiles">
+        <a className="contact-email" href={`mailto:${profile.email}`}><span>{profile.email}</span><Arrow /></a>
+        <External href={profile.links.github}>GitHub <Arrow /></External>
+        <External href={profile.links.linkedin}>LinkedIn <Arrow /></External>
+        <External href={resume}>Résumé <Arrow /></External>
+      </nav>
+      <div className="footer-bottom"><span className="wordmark">tim wang</span><span>Sydney, Australia</span></div>
+    </div>
+    <FooterLanding />
+  </footer>;
 }
+
 export default function App() { return <div id="top"><a className="skip-link" href="#main">Skip to content</a><Navigation /><main id="main"><Hero /><Work /><About /><Experience /><Community /></main><Contact /></div>; }

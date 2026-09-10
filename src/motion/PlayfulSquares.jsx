@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { notifyBlockMotion, registerBlock } from './blockWorld';
 
 const squares = [
   { color: 'blue', x: 435, y: 56, size: 195 },
@@ -23,7 +24,11 @@ export default function PlayfulSquares() {
     const draw = index => {
       const state = states[index];
       const square = squares[index];
-      nodes[index].setAttribute('transform', `translate(${state.x} ${state.y}) rotate(${state.angle} ${square.x + square.size / 2} ${square.y + square.size / 2})`);
+      const transform = `translate(${state.x} ${state.y}) rotate(${state.angle} ${square.x + square.size / 2} ${square.y + square.size / 2})`;
+      if (nodes[index].getAttribute('transform') !== transform) {
+        nodes[index].setAttribute('transform', transform);
+        notifyBlockMotion();
+      }
     };
     const bound = index => {
       const state = states[index];
@@ -55,6 +60,41 @@ export default function PlayfulSquares() {
     const wake = () => {
       if (!frame && !preference.matches && !document.hidden) frame = window.requestAnimationFrame(tick);
     };
+    const unregister = squares.map((square, index) => registerBlock(nodes[index], {
+      sample() {
+        const matrix = nodes[index].getScreenCTM?.();
+        const parent = nodes[index].parentElement.getScreenCTM?.();
+        if (!matrix || !parent) return null;
+        const transform = (x, y) => ({ x: matrix.a * x + matrix.c * y + matrix.e, y: matrix.b * x + matrix.d * y + matrix.f });
+        const center = transform(square.x + square.size / 2, square.y + square.size / 2);
+        const state = states[index];
+        return {
+          vertices: [[square.x, square.y], [square.x + square.size, square.y], [square.x + square.size, square.y + square.size], [square.x, square.y + square.size]].map(([x, y]) => transform(x, y)),
+          cx: center.x, cy: center.y,
+          vx: parent.a * state.vx + parent.c * state.vy,
+          vy: parent.b * state.vx + parent.d * state.vy,
+          omega: state.spin * Math.PI / 180,
+          inverseMass: state.drag || preference.matches ? 0 : 1 / 5,
+        };
+      },
+      impulse(x, y, contact) {
+        const state = states[index];
+        if (state.drag || preference.matches) return;
+        const parent = nodes[index].parentElement.getScreenCTM?.();
+        const matrix = nodes[index].getScreenCTM?.();
+        if (!parent || !matrix) return;
+        const determinant = parent.a * parent.d - parent.b * parent.c;
+        if (Math.abs(determinant) < 0.00001) return;
+        state.vx = clamp(state.vx + (parent.d * x - parent.c * y) / determinant / 5, -800, 800);
+        state.vy = clamp(state.vy + (-parent.b * x + parent.a * y) / determinant / 5, -800, 800);
+        const cx = matrix.a * (square.x + square.size / 2) + matrix.c * (square.y + square.size / 2) + matrix.e;
+        const cy = matrix.b * (square.x + square.size / 2) + matrix.d * (square.y + square.size / 2) + matrix.f;
+        const size = square.size * Math.hypot(matrix.a, matrix.b);
+        const torque = (contact.x - cx) * y - (contact.y - cy) * x;
+        state.spin = clamp(state.spin + torque / (5 * size * size / 6) * 180 / Math.PI, -180, 180);
+        wake();
+      },
+    }));
     const point = (event, index) => {
       const matrix = nodes[index].parentElement.getScreenCTM?.();
       if (matrix) return new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
@@ -161,6 +201,7 @@ export default function PlayfulSquares() {
     window.addEventListener('scroll', scroll, { passive: true });
     return () => {
       api.current = {};
+      unregister.forEach(remove => remove());
       window.cancelAnimationFrame(frame);
       preference.removeEventListener('change', configure);
       document.removeEventListener('visibilitychange', configure);
