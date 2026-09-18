@@ -27,7 +27,10 @@ export function createCollapseGesture() {
   let hits = [];
   let burst = null;
   let collapsed = false;
-  const reset = () => { hits = []; burst = null; collapsed = false; };
+  // Each counted hit must be followed by upward scrolling before the next
+  // one counts, so pushing against the bottom of the page cannot stomp.
+  let armed = true;
+  const reset = () => { hits = []; burst = null; collapsed = false; armed = true; };
   const start = (kind, time, samples = []) => ({
     kind, start: time, last: time, peak: 0, lowSince: null,
     valley: Infinity, rebound: null, counted: false, emitted: false, samples,
@@ -36,7 +39,7 @@ export function createCollapseGesture() {
     reset,
     // Scrolling back up rebuilds a fallen page and starts a fresh cycle, but
     // before the stomp it only ends the current effort: hits are remembered.
-    release() { burst = null; if (collapsed) { hits = []; collapsed = false; } },
+    release() { burst = null; armed = true; if (collapsed) { hits = []; collapsed = false; } },
     // Finger contact is an explicit boundary; one long drag counts only once.
     beginTouch() { burst = null; },
     // Keyboard activation shares the same fallen state. Consume any current
@@ -85,7 +88,7 @@ export function createCollapseGesture() {
       // than permanently rejecting everything after the first small event.
       burst.samples = burst.samples.filter(sample => time - sample.time <= c.impulseMs);
       burst.samples.push({ delta, time });
-      if (burst.counted) return null;
+      if (burst.counted || (!collapsed && !armed)) return null;
       let peak = 0;
       let qualifies = false;
       // Consider shorter windows too: a gentle lead-in must not dilute the
@@ -108,6 +111,7 @@ export function createCollapseGesture() {
       // keeping the no-accumulation contract (no hits history is kept).
       if (collapsed) { burst.emitted = true; burst.samples = []; return 'collapse'; }
       hits.push(time);
+      armed = false;
       if (hits.length < c.bursts) return null;
       collapsed = true;
       burst.emitted = true;

@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { COLLAPSE_GESTURE as C, createCollapseGesture, wheelPixels } from '../src/motion/collapseGesture.js';
 
+// Each hit must be preceded by upward scrolling, so every hard burst scrolls up first.
 const hard = (gesture, time) => {
+  gesture.push(-1, time - 1);
   return [0, 40, 80].map(offset => gesture.push(100, time + offset)).find(Boolean) ?? null;
 };
 let gesture = createCollapseGesture();
@@ -16,6 +18,15 @@ assert.equal(gesture.push(-1, 2250), 'reset');
 assert.equal(gesture.collapsed, false, 'Any upward input rebuilds');
 assert.equal(gesture.count, 0, 'Rebuild clears the rolling history');
 assert.equal(hard(gesture, 3000), null, 'A new cycle requires three fresh bursts');
+
+// Pushing against the bottom without scrolling back up only counts once.
+gesture = createCollapseGesture();
+for (const start of [0, 700, 1400, 2100]) [0, 40, 80].forEach(offset => gesture.push(100, start + offset));
+assert.equal(gesture.count, 1, 'Repeated downward bursts without scrolling up count once');
+assert.equal(gesture.collapsed, false);
+gesture.push(-1, 2500);
+assert.equal(hard(gesture, 2600), null, 'Scrolling up re-arms the next hit');
+assert.equal(gesture.count, 2);
 
 // Scrolling back up between swipes keeps the count within the window.
 gesture = createCollapseGesture();
@@ -53,7 +64,7 @@ for (const values of [
   [...Array(16).fill(2), 8, 12, 18, 26, 32, 36, 32],
 ]) {
   gesture = createCollapseGesture();
-  for (const start of [0, 1000, 2000]) feed(gesture, values, start);
+  for (const start of [0, 1000, 2000]) { gesture.push(-1, start - 1); feed(gesture, values, start); }
   assert.equal(gesture.collapsed, true, 'Small deltas / slow-starting ramps can be three hard efforts');
 }
 gesture = createCollapseGesture();
@@ -61,6 +72,7 @@ for (const start of [0, 2000, 4000]) feed(gesture, Array(9).fill(18), start, 200
 assert.equal(gesture.count, 0, 'Same distance at a gentle pace is not a hard effort');
 gesture = createCollapseGesture();
 for (const start of [0, 700, 1400]) {
+  gesture.push(-1, start - 1);
   feed(gesture, Array(3).fill(wheelPixels({ deltaY: 3, deltaMode: 1 }, 800).y), start, 55);
 }
 assert.equal(gesture.collapsed, true, 'Three quick groups of ordinary three-line mouse notches work');
@@ -71,11 +83,18 @@ assert.equal(gesture.count, 1, 'Continuous mouse rotation is one effort, not one
 // No silence: each flick starts while the previous momentum tail still runs.
 gesture = createCollapseGesture();
 const flick = [2, 4, 8, 14, 22, 30, 36, 34, 29, 23, 18, 13, 9, 6, 4, 3, 2, 2, 2, 2];
+for (let i = 0; i < 3; i++) feed(gesture, flick, i * flick.length * 16);
+assert.equal(gesture.count, 1, 'Back-to-back flicks without scrolling up count once');
+gesture = createCollapseGesture();
 for (let i = 0; i < 3; i++) {
+  gesture.push(-1, i * flick.length * 16 - 1);
   feed(gesture, flick, i * flick.length * 16);
-  assert.equal(gesture.count, i + 1, 'Renewed efforts count without a quiet gap');
+  assert.equal(gesture.count, i + 1, 'Flicks separated by upward scrolling each count');
 }
 assert.equal(gesture.collapsed, true);
+// While fallen, a renewed effort restomps even without a quiet gap.
+const restomps = flick.map((value, i) => gesture.push(value, (3 * flick.length + i) * 16));
+assert.ok(restomps.includes('collapse'), 'Renewed effort while fallen restomps without a quiet gap');
 gesture = createCollapseGesture();
 feed(gesture, flick, 0);
 for (let t = 320; t < 4500; t += 16) gesture.push(t % 160 === 0 ? 18 : 3 + (t % 3), t);
@@ -171,6 +190,7 @@ const wheel = (deltaY, when, extra = {}) => {
 };
 const three = (start = 0) => {
   for (const offset of [0, 700, 1400]) {
+    wheel(-1, start + offset - 10);
     wheel(100, start + offset);
     wheel(100, start + offset + 40);
     wheel(100, start + offset + 80);
@@ -335,6 +355,7 @@ const touch = (type, y, when, count = 1) => {
 };
 for (const start of [25000, 25700, 26400]) {
   touch('touchstart', 400, start);
+  touch('touchmove', 401, start + 10);
   touch('touchmove', 350, start + 20);
   touch('touchmove', 300, start + 60);
   touch('touchmove', 250, start + 100);
@@ -358,7 +379,10 @@ rebuilt('Multitouch is ignored');
 three(34000);
 window.dispatchEvent(new window.Event('resize'));
 rebuilt('Resize restores rather than leaving offscreen links');
-for (let i = 0; i < 3; i++) flick.forEach((delta, j) => wheel(delta, 36000 + (i * flick.length + j) * 16));
+for (let i = 0; i < 3; i++) {
+  wheel(-1, 36000 + i * flick.length * 16 - 1);
+  flick.forEach((delta, j) => wheel(delta, 36000 + (i * flick.length + j) * 16));
+}
 assert.equal(active().length, 5, 'Realistic flicks also work through the installed handler');
 dispose();
 rebuilt('Disposal cancels every animation');
@@ -414,23 +438,28 @@ wheel(200, 42340);
 wheel(200, 42380);
 rebuilt('A single violent fling at the bottom does not activate');
 wheel(120, 42800); wheel(120, 42840); wheel(120, 42880);
-rebuilt('Two efforts are not enough');
 wheel(120, 43300); wheel(120, 43340); wheel(120, 43380);
+rebuilt('Efforts without scrolling back up count once');
+wheel(-1, 43400);
+wheel(120, 43800); wheel(120, 43840); wheel(120, 43880);
+rebuilt('Two efforts are not enough');
+wheel(-1, 44200);
+wheel(120, 44300); wheel(120, 44340); wheel(120, 44380);
 assert.equal(active().length, 5, 'Third effort within five seconds activates');
-for (const when of [43700, 43950, 44200, 44450, 44700]) {
+for (const when of [44700, 44950, 45200, 45450, 45700]) {
   const previous = [...active()];
   wheel(120, when);
   assert.ok(previous.every(animation => animation.cancelled), 'Each fresh effort can replay indefinitely');
   assert.equal(active().length, 5, 'Repeated stomps never accumulate animation effects');
 }
-wheel(-1, 44900);
+wheel(-1, 45900);
 viewportMode = 'footer';
-three(45000);
+three(46000);
 assert.equal(active().length, 3, 'At the bottom only visible footer text and landing tile fall');
 assert.ok(active().every(animation => animation.node.closest('footer')), 'Offscreen hero and project pieces are untouched');
-wheel(-1, 47000);
+wheel(-1, 48000);
 viewportMode = 'none';
-three(48000);
+three(49000);
 rebuilt('No visible eligible content leaves no misleading active class');
 await React.act(async () => reactRoot.unmount());
 rebuilt('React unmount performs full cleanup');
