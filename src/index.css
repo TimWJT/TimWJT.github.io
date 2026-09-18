@@ -183,7 +183,7 @@ li {
 
 .hero-art {
   position:absolute;
-  z-index:-1;
+  z-index:2;
   pointer-events:none;
   right:-3%;
   top:-13%;
@@ -198,6 +198,9 @@ li {
   display:block;
   width:100%;
   height:100%;
+  /* The viewBox places the artwork; the hero, not this viewport, bounds play. */
+  overflow:visible;
+  pointer-events:none;
 }
 
 .top-toy {
@@ -279,6 +282,8 @@ li {
 .square-outline { fill:none; stroke:#565f4a; stroke-width:1.25; }
 
 .hero-name {
+  position:relative;
+  z-index:1;
   pointer-events:none;
   transform:translateY(var(--name-y,0px)) scale(var(--scene-scale,1));
   transform-origin:left bottom;
@@ -296,12 +301,12 @@ li {
 }
 
 .hero-name>span {
-  pointer-events:auto;
+  pointer-events:none;
   animation:enter 900ms both;
 }
 
 .hero-name em {
-  pointer-events:auto;
+  pointer-events:none;
   font-family:var(--serif);
   font-size:.49em;
   font-weight:400;
@@ -768,7 +773,7 @@ details[open]>summary>span:last-child {
   border-top:1px solid #a8b896;
   border-bottom:1px solid #a8b896;
 }
-.contact-links a {
+.contact-links :is(a, button) {
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -782,8 +787,8 @@ details[open]>summary>span:last-child {
 .contact-links .contact-email { padding-left:0; border-left:0; }
 .contact-email>span:first-child { overflow-wrap:anywhere; }
 .contact-links a:last-child { padding-right:0; }
-.contact-links a:hover { color:#274ba9; }
-.contact-links a>span:last-child { flex-shrink:0; }
+.contact-links :is(a, button):hover { color:#274ba9; }
+.contact-links :is(a, button)>span:last-child { flex-shrink:0; }
 .footer-bottom {
   display:flex;
   justify-content:space-between;
@@ -1131,7 +1136,7 @@ details[open]>summary>span:last-child {
   .contact-links a:nth-child(2) { padding-left:0; border-left:0; }
 }
 @media(max-width:640px) {
-  .contact-links a { padding:18px 10px; gap:8px; font-size:1rem; }
+  .contact-links :is(a, button) { padding:18px 10px; gap:8px; font-size:1rem; }
   .contact-links .contact-email { font-size:1.25rem; }
   .contact-links a:last-child { padding-right:0; }
   .contact-links a:nth-child(2) { padding-left:0; }

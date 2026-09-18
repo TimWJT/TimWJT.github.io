@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { notifyBlockMotion, registerBlock } from './blockWorld';
+import { containSquare, localDelta } from './squareBounds';
 
 const squares = [
   { color: 'blue', x: 435, y: 56, size: 195 },
@@ -16,6 +17,14 @@ export default function PlayfulSquares() {
   useEffect(() => {
     const svg = svgRef.current;
     const nodes = [...svg.querySelectorAll('.play-square')];
+    const hero = svg.closest('.hero-stage');
+    const parentMatrix = index => {
+      const matrix = nodes[index].parentElement.getScreenCTM?.();
+      if (matrix) return matrix;
+      const rect = svg.getBoundingClientRect();
+      const scale = Math.min(rect.width / 900, rect.height / 600) || 1;
+      return { a: scale, b: 0, c: 0, d: scale, e: rect.left + (rect.width - 900 * scale) / 2, f: rect.top + (rect.height - 600 * scale) / 2 };
+    };
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
     const states = squares.map(() => ({ x: 0, y: 0, vx: 0, vy: 0, angle: 0, spin: 0, drag: null }));
     let frame = 0;
@@ -30,11 +39,8 @@ export default function PlayfulSquares() {
         notifyBlockMotion();
       }
     };
-    const bound = index => {
-      const state = states[index];
-      const square = squares[index];
-      state.x = clamp(state.x, -square.x + 16, 884 - square.x - square.size);
-      state.y = clamp(state.y, -square.y + 16, 584 - square.y - square.size);
+    const bound = (index, state = states[index]) => {
+      if (hero) containSquare(state, squares[index], parentMatrix(index), hero.getBoundingClientRect());
     };
     const tick = time => {
       frame = 0;
@@ -43,15 +49,18 @@ export default function PlayfulSquares() {
       let moving = false;
       states.forEach((state, index) => {
         if (state.drag) return;
-        state.vx += (-state.x * 9 - state.vx * 4.8) * dt;
-        state.vy += (-state.y * 9 - state.vy * 4.8) * dt;
+        // Return home, or its nearest contained position at this layout size.
+        const home = { x: 0, y: 0, angle: 0 };
+        bound(index, home);
+        state.vx += ((home.x - state.x) * 9 - state.vx * 4.8) * dt;
+        state.vy += ((home.y - state.y) * 9 - state.vy * 4.8) * dt;
         state.spin += (-state.angle * 12 - state.spin * 5) * dt;
         state.x += state.vx * dt;
         state.y += state.vy * dt;
         state.angle += state.spin * dt;
         bound(index);
-        if (Math.abs(state.x) + Math.abs(state.y) + Math.abs(state.vx) + Math.abs(state.vy) + Math.abs(state.angle) + Math.abs(state.spin) > 0.2) moving = true;
-        else Object.assign(state, { x: 0, y: 0, vx: 0, vy: 0, angle: 0, spin: 0 });
+        if (Math.abs(state.x - home.x) + Math.abs(state.y - home.y) + Math.abs(state.vx) + Math.abs(state.vy) + Math.abs(state.angle) + Math.abs(state.spin) > 0.2) moving = true;
+        else Object.assign(state, { ...home, vx: 0, vy: 0, spin: 0 });
         draw(index);
       });
       if (moving && !preference.matches && !document.hidden) frame = window.requestAnimationFrame(tick);
@@ -95,13 +104,6 @@ export default function PlayfulSquares() {
         wake();
       },
     }));
-    const point = (event, index) => {
-      const matrix = nodes[index].parentElement.getScreenCTM?.();
-      if (matrix) return new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
-      const rect = svg.getBoundingClientRect();
-      const scale = Math.min(rect.width / 900, rect.height / 600) || 1;
-      return { x: (event.clientX - rect.left - (rect.width - 900 * scale) / 2) / scale, y: (event.clientY - rect.top - (rect.height - 600 * scale) / 2) / scale };
-    };
     const release = (index, pointerId, cancel = false) => {
       const state = states[index];
       if (!state.drag || state.drag.id !== pointerId) return;
@@ -111,6 +113,7 @@ export default function PlayfulSquares() {
       if (nodes[index].hasPointerCapture?.(pointerId)) nodes[index].releasePointerCapture(pointerId);
       if (cancel) Object.assign(state, { x: 0, y: 0, vx: 0, vy: 0, angle: 0, spin: 0 });
       else if (tapped && !preference.matches) Object.assign(state, { vx: 65, vy: -190, spin: 110 });
+      bound(index);
       draw(index);
       wake();
     };
@@ -123,9 +126,8 @@ export default function PlayfulSquares() {
       },
       down(index, event) {
         if (event.button !== 0 || states[index].drag) return;
-        const cursor = point(event, index);
         const state = states[index];
-        state.drag = { id: event.pointerId, x: cursor.x, y: cursor.y, time: event.timeStamp, distance: 0 };
+        state.drag = { id: event.pointerId, x: event.clientX, y: event.clientY, time: event.timeStamp, distance: 0 };
         state.vx = state.vy = state.spin = 0;
         event.currentTarget.setPointerCapture?.(event.pointerId);
         event.currentTarget.focus({ preventScroll: true });
@@ -134,9 +136,11 @@ export default function PlayfulSquares() {
       move(index, event) {
         const state = states[index];
         if (state.drag?.id !== event.pointerId) return;
-        const cursor = point(event, index);
-        const dx = cursor.x - state.drag.x;
-        const dy = cursor.y - state.drag.y;
+        const screenX = event.clientX - state.drag.x;
+        const screenY = event.clientY - state.drag.y;
+        const delta = localDelta(parentMatrix(index), screenX, screenY);
+        if (!delta) return;
+        const { x: dx, y: dy } = delta;
         const dt = Math.max(0.008, (event.timeStamp - state.drag.time) / 1000);
         state.x += dx;
         state.y += dy;
@@ -146,7 +150,7 @@ export default function PlayfulSquares() {
           state.angle = clamp(state.angle + dx * 0.045, -18, 18);
           state.spin = state.vx * 0.12;
         }
-        state.drag = { id: event.pointerId, x: cursor.x, y: cursor.y, time: event.timeStamp, distance: state.drag.distance + Math.abs(dx) + Math.abs(dy) };
+        state.drag = { id: event.pointerId, x: event.clientX, y: event.clientY, time: event.timeStamp, distance: state.drag.distance + Math.hypot(screenX, screenY) };
         bound(index);
         draw(index);
       },
@@ -196,12 +200,26 @@ export default function PlayfulSquares() {
         });
       } else wake();
     };
+    const layout = () => {
+      states.forEach((state, index) => { bound(index); draw(index); });
+      wake();
+    };
+    // The scroll choreography changes each square's parent transform after
+    // scroll/resize. Recheck even held or sleeping squares once that happens.
+    const observer = new window.MutationObserver(layout);
+    nodes.forEach(node => observer.observe(node.parentElement, { attributes: true, attributeFilter: ['transform'] }));
+    const resizeObserver = window.ResizeObserver ? new window.ResizeObserver(layout) : null;
+    if (hero) resizeObserver?.observe(hero);
+    window.addEventListener('resize', layout);
     preference.addEventListener('change', configure);
     document.addEventListener('visibilitychange', configure);
     window.addEventListener('scroll', scroll, { passive: true });
     return () => {
       api.current = {};
       unregister.forEach(remove => remove());
+      observer.disconnect();
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', layout);
       window.cancelAnimationFrame(frame);
       preference.removeEventListener('change', configure);
       document.removeEventListener('visibilitychange', configure);

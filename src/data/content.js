@@ -4,7 +4,7 @@ export const profile = {
   tagline: 'Software, games, and communities.',
   roles: [
     'Advanced Computing @ USYD',
-    'SYNCS Co-President',
+    'Former SYNCS Co-President',
     'Game developer',
   ],
   email: 'tim200465@gmail.com',
@@ -25,7 +25,7 @@ export const profile = {
 export const physicsHero = {
   tokens: [
     { label: 'Bot Battle 2026: 1st of 94', weight: 'heavy' },
-    { label: 'SYNCS Co-President', weight: 'heavy' },
+    { label: 'Former SYNCS Co-President', weight: 'heavy' },
     { label: 'Godot', weight: 'heavy' },
     { label: 'Python', weight: 'heavy' },
     { label: 'React', weight: 'light' },
@@ -58,7 +58,7 @@ export const about = {
   paragraphs: [
     'Penultimate-year Bachelor of Advanced Computing student at the University of Sydney, majoring in Computer Science and Cyber Security. NZ citizen, now based in Sydney.',
     'I like building things that move: enemy AI in a Godot platformer, a competition bot that plans fourteen steps into the future, a matching algorithm that replaces a spreadsheet nobody wanted to maintain.',
-    'Outside code, I co-lead SYNCS across 54 executives and 5,000+ members, helped grow Gym Society from zero to 850+ members, and play piano (ABRSM Grade 7). I care about bringing people together through events as much as through software.',
+    'Outside code, I co-led SYNCS across 54 executives and 5,000+ members, helped grow Gym Society from zero to 850+ members, and play piano (ABRSM Grade 7). I care about bringing people together through events as much as through software.',
   ],
 };
 
@@ -203,11 +203,11 @@ export const leadership = [
     link: 'https://syncs.org.au/about',
     roles: [
       {
-        title: 'Co-President',
-        period: 'Sep 2025 to Present',
+        title: 'Former Co-President',
+        period: 'Sep 2025 to Sep 2026',
         highlights: [
-          'I co-lead a team of 54 students running events and programs for more than 5,000 members.',
-          'Manage relations with the School of Computer Science and the Faculty of Engineering, and represent SYNCS in industry partnerships.',
+          'I co-led a team of 54 students running events and programs for more than 5,000 members.',
+          'Managed relations with the School of Computer Science and the Faculty of Engineering, and represented SYNCS in industry partnerships.',
           'Launched a food sponsorship initiative, established a competition events portfolio, and rebuilt the Notion workspace.',
         ],
       },

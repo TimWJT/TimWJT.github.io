@@ -1,6 +1,6 @@
 import { JSDOM } from 'jsdom';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createDockState, pokeDock, advanceDock, createFlight, advanceFlight, nudgeFlight } from '../src/motion/topPhysics.js';
 
 const { circlePolygonContact, resolveTopBlock } = await import('../src/motion/blockCollision.js');
@@ -34,8 +34,9 @@ assert.equal(pokeDock(dock,()=>0.2),false,'One click only wobbles');
 for(let i=0;i<300;i++) advanceDock(dock,1/60);
 assert.equal(dock.charge,0,'Separated clicks do not accumulate forever');
 assert.equal(dock.tilt,0,'A single wobble settles upright');
-for(let i=0;i<3;i++) assert.equal(pokeDock(dock,()=>0.2),false,'First three rapid clicks stay docked');
-assert.equal(pokeDock(dock,()=>0.2),true,'Fourth rapid click deploys');
+assert.equal(pokeDock(dock,()=>0.2),false,'First rapid click stays docked');
+for(let i=0;i<12;i++) advanceDock(dock,1/60);
+assert.equal(pokeDock(dock,()=>0.2),true,'Second click after 200ms deploys');
 const bounds={width:900,height:500};
 const { swipeFlight } = await import('../src/motion/topPhysics.js');
 const { auraPower, AURA_SPEED_THRESHOLD } = await import('../src/motion/topAura.js');
@@ -183,7 +184,8 @@ assert.equal($$('.top-push,.square-grip,.square-caption').length,0,'No visible i
 assert.equal($('.top-toy').title,'','No tooltip instructions');
 assert.equal($('nav .wordmark'),null,'Header name is replaced by top');
 assert.equal($$('.back-top').length,0,'Back-to-top button removed');
-assert.equal($$('.contact-links a').length,4,'Email, social profiles, and resume are grouped together');
+assert.equal($$('.contact-links a').length,3,'Social profiles and resume remain links');
+assert.equal($$('.contact-links button.contact-email').length,1,'Email is a copy button, not a mailto link');
 assert.equal($$('.hero-geometry rect').length, 4, 'Geometric hero is rendered');
 assert.ok(!/[\u00c2\u00c3]|\u00e2[\u0080-\u00ff\u2000-\u2122]|\ufffd/.test(document.body.textContent), 'No corrupted Unicode in rendered copy');
 assert.ok($('#work-title').textContent.includes("Things I\u2019ve"), 'Apostrophe renders correctly');
@@ -214,6 +216,107 @@ assert.notEqual(square.getAttribute('transform'),beforeImpact,'Block visibly res
 delete square.getScreenCTM;
 delete square.parentElement.getScreenCTM;
 const stage = $('.hero-stage');
+// JSDOM has no SVG layout engine. Supply responsive screen transforms, then
+// drive the real React pointer handlers and inspect every rendered corner.
+const squareStyles = readFileSync('src/index.css', 'utf8');
+assert.match(squareStyles, /\.hero-geometry\s*\{[^}]*overflow:visible;[^}]*pointer-events:none;/, 'SVG overflow is visible without a full-artwork input shield');
+assert.match(squareStyles, /\.play-square\s*\{[^}]*pointer-events:all;[^}]*touch-action:none;/, 'Only squares take pointer input, including touch drags');
+assert.match(squareStyles, /\.hero-name\s*\{[^}]*pointer-events:none;/, 'Name does not block squares behind it');
+const screenMatrix = (scaleX, scaleY, degrees, e, f) => {
+ const radians=degrees*Math.PI/180, c=Math.cos(radians), s=Math.sin(radians);
+ return {a:scaleX*c,b:scaleY*s,c:-scaleX*s,d:scaleY*c,e,f};
+};
+const squarePose = node => {
+ const values=(node.getAttribute('transform') || 'translate(0 0) rotate(0)').match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/gi).map(Number);
+ return {x:values[0],y:values[1],angle:values[2]};
+};
+const squareCorners = (node, matrix) => {
+ const rect=node.querySelector('rect'), size=Number(rect.getAttribute('width'));
+ const pose=squarePose(node), angle=pose.angle*Math.PI/180;
+ const cx=Number(rect.getAttribute('x'))+size/2, cy=Number(rect.getAttribute('y'))+size/2;
+ const half=size/2+1.5;
+ return [[-half,-half],[half,-half],[half,half],[-half,half]].map(([x,y])=>{
+  const px=cx+pose.x+x*Math.cos(angle)-y*Math.sin(angle);
+  const py=cy+pose.y+x*Math.sin(angle)+y*Math.cos(angle);
+  return {x:matrix.a*px+matrix.c*py+matrix.e,y:matrix.b*px+matrix.d*py+matrix.f};
+ });
+};
+const assertContained = (node, matrix, area, message) => {
+ for(const p of squareCorners(node,matrix)) assert.ok(p.x>=area.left-1e-6 && p.x<=area.left+area.width+1e-6 && p.y>=area.top-1e-6 && p.y<=area.top+area.height+1e-6,message);
+};
+for(const layout of [
+ {name:'desktop',area:{left:40,top:96,width:1200,height:560},matrix:screenMatrix(0.9,0.9,0,380,60)},
+ {name:'mobile with scroll rotation',area:{left:20,top:80,width:335,height:360},matrix:screenMatrix(0.37,0.37,-45,45,250)},
+ {name:'resized nonuniform transform',area:{left:30,top:96,width:740,height:440},matrix:screenMatrix(0.65,0.5,73,420,-180)},
+]) {
+ let area=layout.area;
+ stage.getBoundingClientRect=()=>({...area,bottom:area.top+area.height});
+ for(const node of $$('.play-square')) {
+  let matrix=layout.matrix;
+  node.parentElement.getScreenCTM=()=>matrix;
+  const captures=new Set();
+  node.setPointerCapture=id=>captures.add(id);
+  node.hasPointerCapture=id=>captures.has(id);
+  node.releasePointerCapture=id=>captures.delete(id);
+  node.focus=()=>{};
+  await act(async()=>node.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Home',bubbles:true})));
+  const start=squareCorners(node,matrix).reduce((sum,p)=>({x:sum.x+p.x/4,y:sum.y+p.y/4}),{x:0,y:0});
+  await act(async()=>node.dispatchEvent(pointer('pointerdown',start.x,start.y)));
+  assert.ok(captures.has(7),'Drag captures the pointer beyond artwork bounds');
+  // No clamp is reached by this small movement: verify screen-to-SVG mapping.
+  if(layout.name==='desktop' && node===square) {
+   const before=squareCorners(node,matrix);
+   await act(async()=>node.dispatchEvent(pointer('pointermove',start.x-180,start.y+70)));
+   const after=squareCorners(node,matrix);
+   assert.ok(Math.abs(after.reduce((s,p)=>s+p.x/4,0)-before.reduce((s,p)=>s+p.x/4,0)+180)<1e-6,'Scaled drag tracks screen pixels, not viewBox units');
+  }
+  for(const [dx,dy] of [[-3000,0],[3000,0],[0,-3000],[0,3000],[-3000,-3000],[3000,3000]]) {
+   await act(async()=>node.dispatchEvent(pointer('pointermove',start.x+dx,start.y+dy)));
+   assertContained(node,matrix,area,`${layout.name}: rotated corners stay inside all hero edges`);
+   const corners=squareCorners(node,matrix);
+   if(dx<0) assert.ok(Math.abs(Math.min(...corners.map(p=>p.x))-area.left)<1e-6,'Can reach the hero left edge');
+   if(dx>0) assert.ok(Math.abs(Math.max(...corners.map(p=>p.x))-(area.left+area.width))<1e-6,'Can reach the hero right edge');
+   if(dy<0) assert.ok(Math.abs(Math.min(...corners.map(p=>p.y))-area.top)<1e-6,'Can reach the hero ceiling');
+   if(dy>0) assert.ok(Math.abs(Math.max(...corners.map(p=>p.y))-(area.top+area.height))<1e-6,'Can reach the hero floor');
+   if(layout.name==='desktop' && node===square && dx<0) {
+    assert.ok(squarePose(node).x < -435+16,'Drag reaches beyond the former SVG left limit');
+    assert.ok(Math.min(...corners.map(p=>p.x))<matrix.e,'Square remains outside the SVG viewport');
+   }
+  }
+  // A changing scroll transform must not be treated as pointer movement.
+  matrix={...matrix,e:matrix.e+9,f:matrix.f-6};
+  await act(async()=>node.parentElement.setAttribute('transform','translate(9 -6)'));
+  assertContained(node,matrix,area,'Scroll transform changes recontain a captured square');
+  await act(async()=>node.dispatchEvent(pointer('pointerup',start.x+3000,start.y+3000)));
+  assert.equal(captures.size,0,'Release clears pointer capture');
+  for(let i=0;i<600;i++) { flushFrames(); assertContained(node,matrix,area,'Spring return stays inside hero'); }
+  const settled=squarePose(node);
+  assert.ok(Math.abs(settled.angle)<0.01,'Released square rotation springs home');
+  const home=squareCorners(node,matrix);
+  for(let i=0;i<20;i++) flushFrames();
+  assert.deepEqual(squareCorners(node,matrix),home,'Spring settles rather than fighting the hero wall forever');
+  if(layout.name==='desktop') assert.ok(Math.abs(settled.x)+Math.abs(settled.y)<0.01,'Released square returns to its artwork position');
+  delete node.parentElement.getScreenCTM;
+  delete node.focus;
+  await act(async()=>node.parentElement.removeAttribute('transform'));
+ }
+}
+// Recheck held blocks on resize, even when reduced motion stops animation.
+let resizedArea={left:40,top:96,width:1200,height:560};
+stage.getBoundingClientRect=()=>({...resizedArea,bottom:resizedArea.top+resizedArea.height});
+square.parentElement.getScreenCTM=()=>screenMatrix(0.6,0.6,0,250,100);
+motionPreference.matches=true;
+mediaListeners.forEach(callback=>callback());
+await act(async()=>square.dispatchEvent(pointer('pointerdown',600,200)));
+await act(async()=>square.dispatchEvent(pointer('pointermove',1800,800)));
+resizedArea={left:40,top:96,width:400,height:350};
+await act(async()=>window.dispatchEvent(new window.Event('resize')));
+assertContained(square,square.parentElement.getScreenCTM(),resizedArea,'Resize recontains a held square without an animation loop');
+await act(async()=>square.dispatchEvent(pointer('pointercancel',1800,800)));
+assertContained(square,square.parentElement.getScreenCTM(),resizedArea,'Cancel restores the nearest contained home');
+delete square.parentElement.getScreenCTM;
+motionPreference.matches=false;
+mediaListeners.forEach(callback=>callback());
 const scene = $('.hero-scroll-scene');
 stage.getBoundingClientRect = () => ({top:90,bottom:490,height:400});
 scene.getBoundingClientRect = () => ({top:-110,bottom:690,height:800});
@@ -246,8 +349,8 @@ for(let i=0;i<300;i++) flushFrames();
 assert.equal(top.dataset.state,'idle','Wobble returns to idle without enough clicks');
 stage.getBoundingClientRect = () => ({top:96,left:40,width:900,height:400,bottom:496});
 top.getBoundingClientRect = () => ({top:8,left:40,width:112,height:72,bottom:80});
-for(let i=0;i<4;i++) await act(async()=>top.click());
-assert.equal(top.dataset.state,'launching','Four clicks begin deployment');
+for(let i=0;i<2;i++) await act(async()=>top.click());
+assert.equal(top.dataset.state,'launching','Two clicks begin deployment');
 for(let i=0;i<30;i++) flushFrames();
 assert.equal(top.dataset.state,'deployed','Top deploys into hero');
 const floating=$('.deployed-top');
@@ -292,7 +395,7 @@ assert.equal(floating.hidden,true,'Toy does not intrude into reading sections');
 window.scrollY=1500;
 let requestedScroll=null;
 window.scrollTo=options=>{requestedScroll=options;};
-for(let i=0;i<4;i++) await act(async()=>top.click());
+for(let i=0;i<2;i++) await act(async()=>top.click());
 assert.equal(top.dataset.state,'returning','Activation down the page waits for return');
 assert.equal(requestedScroll.top,0,'Activation requests return to top');
 assert.equal(floating.hidden,true,'No deployed toy over lower sections');
@@ -303,7 +406,7 @@ assert.equal(top.dataset.state,'deployed','Deployment happens after returning to
 await act(async()=>window.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape'})));
 assert.equal(top.dataset.state,'idle','Escape returns toy to the dock');
 window.scrollY=1500;
-for(let i=0;i<4;i++) await act(async()=>top.click());
+for(let i=0;i<2;i++) await act(async()=>top.click());
 window.dispatchEvent(new window.WheelEvent('wheel',{deltaY:100}));
 assert.equal(top.dataset.state,'idle','Manual scrolling cancels an in-progress return');
 window.scrollY=0;
