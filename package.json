@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vite-node scripts/smoke-test.mjs",
-    "test:all": "vite-node scripts/smoke-test.mjs"
+    "test": "vite-node scripts/smoke-test.mjs && vite-node scripts/easter-letters-test.mjs && vite-node scripts/easter-collapse-test.mjs && vite-node scripts/easter-sound-test.mjs && vite-node scripts/easter-rainbow-test.mjs && vite-node scripts/email-copy-test.mjs",
+    "test:all": "npm test"
   },
   "dependencies": {
     "matter-js": "^0.20.0",

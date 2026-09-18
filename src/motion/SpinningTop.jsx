@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { RESTING_TILT, advanceDock, advanceFlight, createDockState, createFlight, nudgeFlight, pokeDock, swipeFlight } from './topPhysics';
 import { onBlockMotion, sampleBlocks } from './blockWorld';
 import { paintAura } from './topAura';
+import { createWoodClick } from './woodClick';
 
 const rings = [[0, 0], [4, -7], [21, -19], [24, -23], [15, -29], [4, -30], [3, -40]];
 const colors = ['#315cd5', '#315cd5', '#e77743', '#dfc14e', '#e9ebe0', '#64704e', '#315cd5', '#e9ebe0'];
@@ -82,6 +83,7 @@ export default function SpinningTop() {
     if (!hero) return;
     setScene(document.body);
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const woodClick = createWoodClick();
     let dock = createDockState();
     let flight = null;
     let phase = 'idle';
@@ -168,6 +170,7 @@ export default function SpinningTop() {
       if (!frame && !document.hidden) frame = window.requestAnimationFrame(tick);
     };
     controls.current = {
+      click: () => { if (phase !== 'deployed') woodClick.play(); },
       poke() {
         if (phase === 'deployed' || phase === 'returning' || phase === 'launching') return;
         if (pokeDock(dock)) {
@@ -250,6 +253,7 @@ export default function SpinningTop() {
     render();
     return () => {
       controls.current = {};
+      woodClick.dispose();
       unsubscribe();
       window.cancelAnimationFrame(frame);
       window.removeEventListener('scroll', scroll);
@@ -263,7 +267,10 @@ export default function SpinningTop() {
   }, []);
 
   return <>
-    <button ref={buttonRef} className="top-toy" type="button" onClick={() => controls.current.poke?.()} aria-label="Wobble the top. Repeated presses release it into the hero.">
+    <button ref={buttonRef} className="top-toy" type="button"
+      onClick={() => { controls.current.click?.(); controls.current.poke?.(); }}
+      onKeyDown={event => { if (event.repeat && [' ', 'Enter'].includes(event.key)) event.preventDefault(); }}
+      aria-label="Wobble the top. Repeated presses release it into the hero.">
       <canvas ref={canvasRef} width="112" height="72" aria-hidden="true" />
     </button>
     {scene && createPortal(
@@ -274,8 +281,13 @@ export default function SpinningTop() {
           event.currentTarget.focus({ preventScroll: true });
           controls.current.nudge?.(event);
         }}
-        onClick={event => { if (event.detail === 0) controls.current.nudge?.(); }}
+        // Sound only exists on the docked top. Deployed interactions steer or
+        // push silently; native Space/Enter activation still supplies the nudge.
+        onClick={event => {
+          if (event.detail === 0) controls.current.nudge?.();
+        }}
         onKeyDown={event => {
+          if (event.repeat && [' ', 'Enter'].includes(event.key)) event.preventDefault();
           const hits = { ArrowLeft: { x: 24, y: 0 }, ArrowRight: { x: -24, y: 0 }, ArrowUp: { x: 0, y: 24 }, ArrowDown: { x: 0, y: -24 } };
           if (hits[event.key]) { event.preventDefault(); controls.current.nudge?.(null, hits[event.key]); }
         }}

@@ -23,7 +23,7 @@ MUTED = (138, 136, 132)
 ACCENT = (107, 159, 255)
 GRID = (20, 20, 24)
 
-EYEBROW = "ADVANCED COMPUTING @ USYD  \u00b7  SYNCS CO-PRESIDENT"
+EYEBROW = "SOFTWARE DEVELOPER  \u00b7  USYD STUDENT"
 NAME = "Tim Wang"
 TAGLINE = ["Building games, running communities,", "solving problems."]
 URL = "timwjt.github.io"
