@@ -1,0 +1,73 @@
+/* Leave the heading and word transforms to the hero's scroll/entry motion. */
+.hero-name .name-word {
+  white-space:nowrap;
+}
+
+.hero-name .name-letter {
+  position:relative;
+  display:inline-block;
+  vertical-align:baseline;
+  padding:0;
+  margin:0;
+  border:0;
+  border-radius:3px;
+  background:none;
+  color:inherit;
+  font:inherit;
+  letter-spacing:inherit;
+  text-align:left;
+  cursor:pointer;
+  pointer-events:auto;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* The original glyph reserves its width in the original font, in every state.
+   Only the overlaid visible glyph changes font: no reflow when it is pressed. */
+.hero-name .name-letter::before {
+  content:attr(data-letter);
+  visibility:hidden;
+  pointer-events:none;
+}
+
+.hero-name .name-letter-glyph {
+  position:absolute;
+  left:0;
+  top:0;
+  display:block;
+  transform-origin:50% 65%;
+  pointer-events:none;
+}
+
+.hero-name .name-word-sans .name-letter[data-font="1"] .name-letter-glyph {
+  font-family:'DM Sans',Arial,sans-serif;
+}
+.hero-name .name-word-sans .name-letter[data-font="2"] .name-letter-glyph {
+  font-family:Arial,Helvetica,sans-serif;
+}
+.hero-name .name-word-serif .name-letter[data-font="1"] .name-letter-glyph {
+  font-family:Georgia,'Times New Roman',serif;
+  font-size:.88em;
+}
+.hero-name .name-word-serif .name-letter[data-font="2"] .name-letter-glyph {
+  font-family:'Times New Roman',Georgia,serif;
+  font-size:.94em;
+}
+
+.hero-name .name-letter-glyph[data-flip="true"] {
+  animation:name-letter-flip 220ms ease-out;
+}
+
+.hero-name .name-letter:focus-visible {
+  outline:2px solid var(--accent,#64704e);
+  outline-offset:4px;
+}
+
+@keyframes name-letter-flip {
+  0% { transform:perspective(600px) rotateX(-18deg) scaleY(.94); }
+  55% { transform:perspective(600px) rotateX(5deg); }
+  100% { transform:none; }
+}
+
+@media(prefers-reduced-motion:reduce) {
+  .hero-name .name-letter-glyph[data-flip="true"] { animation:none; }
+}

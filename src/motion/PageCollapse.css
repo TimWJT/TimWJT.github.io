@@ -1,0 +1,10 @@
+/* Clip visual overflow, not layout. Unlike overflow:hidden, clip does not
+   create a scroll container and does not change sticky positioning. Never
+   transform/filter/contain #top: the navigation and floating toy stay put.
+   The page keeps its original height even when its last piece falls. */
+#top.page-collapse-active {
+  overflow: clip;
+}
+
+/* Intentionally available under reduced motion at the site owner's request.
+   Web Animations remain independent of the site's CSS animation reset. */

@@ -1,0 +1,89 @@
+/* Rainbow sweep — header easter egg overlay.
+   Mounted inside <header class="site-header"> (sticky + z-index, so the header
+   is its own stacking context; z-index: -1 keeps the gradient above the header
+   background but below the navigation content). */
+
+.rainbow-bar {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  background-image: linear-gradient(90deg, #ff5964, #ff9d47, #ffe14d, #6bd96b, #4dc3ff, #7a5cff, #ff5fd0, #ff5964);
+  background-size: 200% 100%;
+  transition: opacity 0.4s ease;
+  animation: rainbow-sweep 1.2s linear infinite, aurora-hue 7s ease-in-out infinite;
+  animation-play-state: paused, paused;
+}
+
+/* A soft blurred second layer drifts against the sweep, like aurora sheets. */
+.rainbow-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(55% 130% at 30% 20%, #6bd96b66, transparent 70%),
+    linear-gradient(105deg, transparent 15%, #4dc3ff55 45%, #ff5fd044 62%, transparent 88%);
+  background-size: 260% 180%;
+  filter: blur(6px);
+  mix-blend-mode: screen;
+  animation: aurora-drift 3.1s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+.rainbow-bar.is-active {
+  opacity: 0.55;
+  animation-play-state: running, running;
+}
+
+.rainbow-bar.is-active::before {
+  animation-play-state: running;
+}
+
+/* Last held arrow picks the travel direction: reverse simply plays the
+   seamless loop backwards so the colours sweep the other way. */
+.rainbow-bar[data-direction='left'] {
+  animation-direction: reverse, reverse;
+}
+
+.rainbow-bar[data-direction='left']::before {
+  animation-direction: alternate-reverse;
+}
+
+@keyframes rainbow-sweep {
+  from { background-position: 0% 50%; }
+  to { background-position: -200% 50%; }
+}
+
+@keyframes aurora-drift {
+  from { background-position: 0% 35%; }
+  to { background-position: 100% 65%; }
+}
+
+@keyframes aurora-hue {
+  0%, 100% { filter: hue-rotate(0deg); }
+  50% { filter: hue-rotate(70deg); }
+}
+
+/* Explicit exception requested for this held-key effect. Specificity beats
+   the site's global reduced-motion animation:none!important rule. */
+@media (prefers-reduced-motion: reduce) {
+  .rainbow-bar {
+    animation: rainbow-sweep 1.2s linear infinite paused, aurora-hue 7s ease-in-out infinite paused !important;
+    transition: opacity 0.4s ease !important;
+  }
+  .rainbow-bar::before {
+    animation: aurora-drift 3.1s ease-in-out infinite alternate paused !important;
+  }
+  .rainbow-bar.is-active {
+    animation-play-state: running, running !important;
+  }
+  .rainbow-bar.is-active::before {
+    animation-play-state: running !important;
+  }
+  .rainbow-bar[data-direction='left'] {
+    animation-direction: reverse, reverse !important;
+  }
+  .rainbow-bar[data-direction='left']::before {
+    animation-direction: alternate-reverse !important;
+  }
+}

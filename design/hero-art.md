@@ -1,11 +1,25 @@
 # Discovered interactions
 
-The nav top starts stationary and upright. A press applies a damped wobble impulse. Four closely spaced presses knock it loose; isolated presses settle without accumulating indefinitely. Scroll and wheel movement never add energy or activate it.
+The nav top starts stationary and upright. A press applies a damped wobble impulse. Two closely spaced presses knock it loose; isolated presses settle without accumulating indefinitely. Scroll and wheel movement never add energy or activate it.
 
 Activation below the hero smoothly returns to the top (instant under reduced motion), waits for arrival, then launches from the nav position into the hero. Manual scrolling interrupts that return. The deployed top has randomized launch destination, restitution, spin direction, and fall direction, plus gravity, floor and side-wall collisions, friction, and a damped balance model. It renders in a fixed body-level layer above the navigation, while its world coordinates and lifetime remain confined to the hero. It returns to the dock when the hero leaves view. Escape docks it. Idle and settled states request no frames; hidden tabs pause simulation.
 
-The squares retain drag, toss, keyboard, and scroll interactions. Visible hints, arrows, move icons, drag text, and tooltip instructions are removed. Screen-reader names and keyboard controls remain available.
+The squares retain drag, toss, keyboard, and scroll interactions. Their play area is the full `.hero-stage` used by the deployed top, not the artwork's 900×600 viewBox. The SVG allows visible overflow; only square shapes receive pointer input, so the name and empty artwork area do not block play. Screen-space bounds include the squares' rotated corners and focus stroke, with movement converted through the scroll parent's current transform. Resize and scroll choreography recheck held and resting squares. On release, the spring returns to the original position (or its nearest contained position if the current layout puts that position outside the hero). Reduced motion keeps manual dragging but disables the spring as before. Visible hints, arrows, move icons, drag text, and tooltip instructions are removed. Screen-reader names and keyboard controls remain available.
 
+
+## Hidden Easter eggs
+
+Each letter in the hero name is a separate button, cycling through three related fonts with a short flip. The initial glyph reserves its width so neighbouring letters do not move. Squares sit above the name and the deployed spinner above both; empty artwork passes clicks through. Reduced motion disables the flip.
+
+Only clicks on the spinner in its top-bar stand play a short, hard 60ms tap (a sharp transient and fixed high resonances, no pitch bend). Floating spinner clicks are silent. Audio starts on demand, caps overlapping voices and closes on unmount. Hover, scroll, swipe and arrow steering are silent.
+
+Holding Left/Right on the page sweeps a subtle rainbow across the header in that direction, with a 1.2-second sweep cycle. A blurred pseudo-element aurora drifts independently over 3.1 seconds, while a seven-second hue cycle shifts the colours. Releasing the keys fades it out. Focused controls keep their own arrows; blur, Escape and hidden tabs clear held keys. The sweep intentionally works with reduced motion enabled, as requested; a scoped CSS exception overrides the global animation reset. No turtle or other global arrow-key toy remains.
+
+Three separate forceful downward scrolling efforts within five seconds trigger a shake and falling visible content, including the footer tiles. One fast fling also triggers it: at least 600px of cumulative wheel movement (500px for touch) within 180ms. While already collapsed, a fresh forceful downward effort replays the fall by cancelling and replacing the previous animations on the original pieces, without stacking effects or changing page height. Actual scroll movement is counted mid-page; wheel/touch input is used only at the bottom, where the page cannot move farther. This avoids double-counting input and its resulting movement. Efforts are recognised after a pause or sustained slowing followed by renewed acceleration; a rolling window accepts smaller trackpad events and slower ramps without counting an inertia tail repeatedly. Fast upward finger swipes offer the touch equivalent. Visible pieces drop 140–360px without changing document height or moving the fixed spinner/navigation. Upward scrolling restores the page; focusing/clicking content, Escape, resize and visibility changes also clear it. Backslash (`\`) triggers it directly (except while typing in an editable field). Both scroll and direct triggers intentionally work with reduced motion enabled, as requested. Thresholds live in `src/motion/collapseGesture.js`.
+
+The contact email is a copy button. On success, its action slot shows only “Copied!” for 2.5 seconds, replacing both the copy icon and label. A visually hidden live confirmation announces success without displaying it twice. Clipboard denial uses a selection-based fallback; if both fail, the button reports failure instead of claiming success.
+
+`npm test` runs the original smoke test, four Easter egg suites and the email-copy tests. `scripts/easter-browser-check.mjs` adds real desktop/mobile browser checks against a separately started Vite server and isolated Chromium/Edge debugging port (see its header).
 
 ## Directional controls and collisions
 

@@ -16,7 +16,7 @@ export function pokeDock(state, random = Math.random) {
   if (state.charge < 0.1) state.side = sign(random);
   state.charge += 1;
   state.leanVelocity += state.side * (2.2 + state.charge * 0.45);
-  return state.charge >= 3.4;
+  return state.charge >= 1.7;
 }
 
 export function advanceDock(state, elapsed) {
