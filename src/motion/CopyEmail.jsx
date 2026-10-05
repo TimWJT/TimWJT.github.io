@@ -1,7 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './CopyEmail.css';
 
 const FAILURE = 'Couldn’t copy — select the email instead.';
+
+// The confirmation gets a little more knowing the more often one visit copies
+// the same address. Each entry holds from its count until the next one takes
+// over. Short on purpose: the action slot never shrinks, so every extra
+// character is taken from the email beside it on a narrow screen.
+const CONFIRMATIONS = [
+  [1, 'Copied!'],
+  [3, 'Copied again!'],
+  [5, 'Same email!'],
+  [8, 'Just email me :)'],
+  [12, 'I’m flattered.'],
+];
+const confirmation = copies => CONFIRMATIONS.findLast(([from]) => copies >= from)[1];
 
 function fallbackCopy(email) {
   const active = document.activeElement;
@@ -44,12 +58,18 @@ function fallbackCopy(email) {
 
 export default function CopyEmail({ email }) {
   const [message, setMessage] = useState('');
+  // Where the live region is portalled to, or null before mount. Same shape as
+  // the deployed top in SpinningTop.jsx: document is not touched during render.
+  const [portalsTo, setPortalsTo] = useState(null);
   const mounted = useRef(false);
   const attempt = useRef(0);
   const timer = useRef(null);
+  // Successful copies this visit. Memory only: a reload starts over.
+  const copies = useRef(0);
 
   useEffect(() => {
     mounted.current = true;
+    setPortalsTo(document.body);
     return () => {
       mounted.current = false;
       attempt.current++;
@@ -76,7 +96,8 @@ export default function CopyEmail({ email }) {
       try { copied = fallbackCopy(email); } catch { copied = false; }
     }
     if (!isCurrent()) return;
-    setMessage(copied ? 'Copied!' : FAILURE);
+    if (copied) copies.current++;
+    setMessage(copied ? confirmation(copies.current) : FAILURE);
     if (copied) {
       timer.current = window.setTimeout(() => {
         timer.current = null;
@@ -85,27 +106,46 @@ export default function CopyEmail({ email }) {
     }
   };
 
+  const failed = message === FAILURE;
+  const succeeded = message !== '' && !failed;
   return (
-    <button type="button" className="contact-email" onClick={copy} aria-label={`Copy email address ${email}`}>
-      <span className="contact-email-text">
-        <span className="contact-email-address">{email}</span>
-        {/* Success lives in the action slot; the live region hides it visually
-            so it is announced but not shown twice. Failure stays visible. */}
-        <span className={`contact-email-status${message === 'Copied!' ? ' contact-email-status-hidden' : ''}`} role="status" aria-live="polite" aria-atomic="true">{message}</span>
-      </span>
-      <span className="contact-email-action" aria-hidden="true">
-        {message === 'Copied!' ? (
-          <span className="contact-email-copied">Copied!</span>
-        ) : (
-          <>
-            <svg viewBox="0 0 16 16" width="16" height="16" focusable="false">
-              <rect x="5.5" y="1.5" width="9" height="9" rx="1.5" />
-              <path d="M10.5 10.5v2A1 1 0 0 1 9.5 13.5h-6a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h2" />
-            </svg>
-            <span className="contact-email-action-label">Copy</span>
-          </>
-        )}
-      </span>
-    </button>
+    <>
+      {/* The confirmation used to live inside the <button>, so while a copy ran
+          the live region was inside the control that held focus. Screen readers
+          treat the contents of a focused control specially, and a live region
+          down there is announced at their discretion rather than the page's.
+          Portalling it to the end of <body> puts it beyond that: never a
+          descendant of the button, and never a new child of
+          `nav.contact-links` either, because that nav is a four-column grid
+          whose own rules lean on `a:last-child` and `a:nth-child(2)`, and one
+          more element in it would shift both. It is always mounted, which is
+          what a live region needs to be heard at all. */}
+      {portalsTo && createPortal(
+        <span className="contact-email-live" role="status" aria-live="polite" aria-atomic="true">{message}</span>,
+        portalsTo,
+      )}
+      <button type="button" className="contact-email" onClick={copy} aria-label={`Copy email address ${email}`}>
+        <span className="contact-email-text">
+          <span className="contact-email-address">{email}</span>
+          {/* Failure stays on screen so the address can be selected and copied by
+              hand. The live region carries the same words for assistive
+              technology, so this copy is hidden from it rather than read twice. */}
+          {failed && <span className="contact-email-failure" aria-hidden="true">{FAILURE}</span>}
+        </span>
+        <span className="contact-email-action" aria-hidden="true">
+          {succeeded ? (
+            <span className="contact-email-copied">{message}</span>
+          ) : (
+            <>
+              <svg viewBox="0 0 16 16" width="16" height="16" focusable="false">
+                <rect x="5.5" y="1.5" width="9" height="9" rx="1.5" />
+                <path d="M10.5 10.5v2A1 1 0 0 1 9.5 13.5h-6a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h2" />
+              </svg>
+              <span className="contact-email-action-label">Copy</span>
+            </>
+          )}
+        </span>
+      </button>
+    </>
   );
 }

@@ -1,0 +1,131 @@
+/*
+ * The hidden terminal panel.
+ *
+ * Nothing here touches #top. A transform, filter or contain on an ancestor of
+ * the sticky header or the fixed deployed top would break both, so the overlay
+ * is fixed, portalled to <body> and self-contained. The panel is also the only
+ * thing on the site that overlays the whole viewport, so it sits above
+ * .skip-link (100), .deployed-top (60) and .site-header (20).
+ *
+ * Colours are the site's own tokens, with a literal fallback per token so the
+ * panel still reads correctly if it is ever rendered without the stylesheet's
+ * :root. That is also what lets it follow whichever palette is applied rather
+ * than hard-coding a dark theme that would fight the page.
+ */
+.terminal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 5vh, 4rem) clamp(0.75rem, 4vw, 3rem);
+  background: var(--surface, var(--paper, #f5f4ed));
+  color: var(--ink, #282a24);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: clamp(0.85rem, 0.8rem + 0.25vw, 1rem);
+  line-height: 1.55;
+  /* Opacity only. A transform here would be safe, but it buys nothing and a
+     full-viewport compositing layer is not worth the memory. */
+  animation: terminal-in 120ms ease-out both;
+}
+
+.terminal-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  width: min(64ch, 100%);
+  /* The flex item must be allowed to shrink below its content, or a long
+     scrollback would push the input line off the bottom of the screen. */
+  min-height: 0;
+  max-height: 100%;
+}
+
+.terminal-output {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* Scrolling the scrollback must not scroll the article behind it. */
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.terminal-block + .terminal-block {
+  margin-top: 0.9rem;
+}
+
+/* The typed command, echoed back. A real element rather than a ::before, so
+   screen readers read the command and not a stray "greater than". */
+.terminal-echo,
+.terminal-result {
+  margin: 0;
+}
+
+.terminal-echo {
+  margin-bottom: 0.2rem;
+  color: var(--muted, #686a60);
+  overflow-wrap: anywhere;
+}
+
+.terminal-mark {
+  color: var(--accent, #64704e);
+  /* The prompt is decoration; the command text next to it is the content. */
+  user-select: none;
+  margin-right: 0.5ch;
+}
+
+.terminal-line {
+  display: block;
+  /* Long URLs and unbroken titles wrap instead of widening the scrollback. */
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* Errors reuse the accent rather than introducing a red, because the site has
+   exactly one chromatic token and a palette switch must not lose the failure. */
+.terminal-result.is-error {
+  color: var(--accent, #64704e);
+}
+
+/* The mark carries its own right margin, so the row needs no extra gap. */
+.terminal-form {
+  display: flex;
+  align-items: baseline;
+  border-bottom: 1px solid var(--line, #d4d5c8);
+  padding-bottom: 0.35rem;
+}
+
+.terminal-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  caret-color: var(--accent, #64704e);
+}
+
+/* The input is the only focusable thing in the panel and always holds focus
+   while it is open, so the persistent underline on .terminal-form plus the
+   coloured caret are the focus indicators. An outline around a full-width text
+   field would read as a selection, not as focus. */
+.terminal-input:focus {
+  outline: none;
+}
+
+@keyframes terminal-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* The site default is less motion means no motion. Nothing on this panel
+   animates beyond the fade above, so one rule turns the whole thing off. The
+   browser's own text caret is not an animation this stylesheet owns and is left
+   alone. */
+@media (prefers-reduced-motion: reduce) {
+  .terminal-overlay {
+    animation: none !important;
+  }
+}

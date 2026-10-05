@@ -260,7 +260,7 @@ try {
     await cdp('Browser.grantPermissions',{origin:new URL(site).origin,permissions:['clipboardReadWrite','clipboardSanitizedWrite']});
     await js(`document.querySelector('.contact-email').scrollIntoView({block:'center',behavior:'instant'})`); await sleep(300);
     const emailRect=await rect('.contact-email'); await click(emailRect.cx,emailRect.cy); await sleep(150);
-    check('email copies exact address and confirms without navigation', await js(`navigator.clipboard.readText()`) === 'tim200465@gmail.com' && await js(`document.querySelector('.contact-email [role="status"]').textContent === 'Copied!' && document.querySelector('.contact-email').tagName === 'BUTTON' && !document.querySelector('.contact-email').hasAttribute('href')`));
+    check('email copies exact address and confirms without navigation', await js(`navigator.clipboard.readText()`) === 'tim200465@gmail.com' && await js(`document.querySelector('.contact-email-live[role="status"]').textContent === 'Copied!' && document.querySelector('.contact-email').tagName === 'BUTTON' && !document.querySelector('.contact-email').hasAttribute('href')`));
     const emailSuccess = await js(`(() => {const e=document.querySelector('.contact-email'),action=e.querySelector('.contact-email-action');return {actionText:action?.textContent.trim(),svgCount:e.querySelectorAll('svg').length,copiedCount:action?.querySelectorAll('.contact-email-copied').length}})()`);
     check('email success action shows only Copied! with no SVG', emailSuccess.actionText === 'Copied!' && emailSuccess.svgCount === 0 && emailSuccess.copiedCount === 1, emailSuccess);
     check('no browser console/runtime errors', errors.length === 0, errors);

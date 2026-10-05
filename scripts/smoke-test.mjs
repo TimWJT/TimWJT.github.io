@@ -194,6 +194,28 @@ await act(async()=>square.dispatchEvent(new window.KeyboardEvent('keydown',{key:
 assert.ok(square.getAttribute('transform').includes('translate(24 0)'), 'Keyboard can move a square');
 await act(async()=>square.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Home',bubbles:true})));
 assert.ok(square.getAttribute('transform').includes('translate(0 0)'), 'Home resets square');
+// A click with detail 0 is what a keyboard or a screen reader sends; a real
+// tap sends detail 1 and is already handled by the pointer path.
+const beforeClick=square.getAttribute('transform');
+await act(async()=>square.dispatchEvent(new window.MouseEvent('click',{detail:0,bubbles:true})));
+for(let i=0;i<4;i++) flushFrames();
+assert.notEqual(square.getAttribute('transform'),beforeClick,'A non-pointer click can activate the square and toss it');
+const homeEvent=new window.KeyboardEvent('keydown',{key:'Home',bubbles:true,cancelable:true});
+await act(async()=>square.dispatchEvent(homeEvent));
+assert.ok(square.getAttribute('transform').includes('translate(0 0)'), 'Home resets the square');
+assert.equal(homeEvent.defaultPrevented,false,'Home is left for the page to scroll with');
+for(const key of ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown']) {
+ const arrowEvent=new window.KeyboardEvent('keydown',{key,bubbles:true,cancelable:true});
+ await act(async()=>square.dispatchEvent(arrowEvent));
+ assert.equal(arrowEvent.defaultPrevented,true,`${key} is still owned by the focused square`);
+ await act(async()=>square.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Home',bubbles:true})));
+}
+const spaceEvent=new window.KeyboardEvent('keydown',{key:' ',bubbles:true,cancelable:true});
+await act(async()=>square.dispatchEvent(spaceEvent));
+assert.equal(spaceEvent.defaultPrevented,false,'Space is left for the page to scroll with');
+// Space tossed the square 18 units up, so put it home before the drag below
+// measures an exact offset from 0,0.
+await act(async()=>square.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Home',bubbles:true})));
 const pointer = (type,x,y) => {
  const event=new window.MouseEvent(type,{clientX:x,clientY:y,button:0,bubbles:true});
  Object.defineProperty(event,'pointerId',{value:7});
@@ -380,13 +402,30 @@ assert.ok(floating.querySelector('.top-aura'),'Charged toy has an aura canvas');
 const initialX=floating.dataset.x;
 for(let i=0;i<40;i++) flushFrames();
 assert.notEqual(floating.dataset.x,initialX,'Deployed toy travels horizontally');
+// The deployed toy's launch is randomised inside createFlight, so by the time
+// this runs the toy sits at an arbitrary x - sometimes within a frame or two of
+// the hero's right-hand clamp at 855. The original form waited twelve frames
+// and compared positions, which failed about one run in eight: a press that
+// correctly throws the toy rightwards can reach that clamp inside the wait,
+// rebound off it, and finish further left than it started, even though the
+// steering was right on frame one. Each check now waits only until the toy is
+// comfortably clear of the wall it is about to be pushed towards, and then
+// measures a single frame of travel - which is all the press really decides.
+const steerClearOf = async limit => {
+ for(let i=0;i<600;i++) {
+  if(Number(floating.dataset.x)<limit) return;
+  flushFrames();
+ }
+};
+await steerClearOf(855-60);
 const steeringStart=Number(floating.dataset.x);
 await act(async()=>floating.dispatchEvent(pointer('pointerdown',40+steeringStart-35,96+Number(floating.dataset.y)-22)));
-for(let i=0;i<12;i++) flushFrames();
+flushFrames();
 assert.ok(Number(floating.dataset.x)>steeringStart,'Actual left-side pointer press steers right');
+await steerClearOf(45+60);
 const reverseStart=Number(floating.dataset.x);
 await act(async()=>floating.dispatchEvent(pointer('pointerdown',40+reverseStart+35,96+Number(floating.dataset.y)-22)));
-for(let i=0;i<8;i++) flushFrames();
+flushFrames();
 assert.ok(Number(floating.dataset.x)<reverseStart,'Actual right-side pointer press steers left');
 stage.getBoundingClientRect = () => ({top:-700,left:40,width:900,height:400,bottom:-300});
 window.dispatchEvent(new window.Event('scroll'));
@@ -396,20 +435,18 @@ window.scrollY=1500;
 let requestedScroll=null;
 window.scrollTo=options=>{requestedScroll=options;};
 for(let i=0;i<2;i++) await act(async()=>top.click());
-assert.equal(top.dataset.state,'returning','Activation down the page waits for return');
-assert.equal(requestedScroll.top,0,'Activation requests return to top');
+assert.equal(requestedScroll,null,'Activation down the page never moves the reader');
 assert.equal(floating.hidden,true,'No deployed toy over lower sections');
+for(let i=0;i<300;i++) flushFrames();
+assert.equal(top.dataset.state,'idle','Activation down the page only wobbles');
 window.scrollY=0;
 stage.getBoundingClientRect = () => ({top:96,left:40,width:900,height:400,bottom:496});
+for(let i=0;i<2;i++) await act(async()=>top.click());
+assert.equal(top.dataset.state,'launching','Two presses release the toy from the top of the page');
 for(let i=0;i<35;i++) flushFrames();
-assert.equal(top.dataset.state,'deployed','Deployment happens after returning to top');
+assert.equal(top.dataset.state,'deployed','The top deploys into the hero');
 await act(async()=>window.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape'})));
 assert.equal(top.dataset.state,'idle','Escape returns toy to the dock');
-window.scrollY=1500;
-for(let i=0;i<2;i++) await act(async()=>top.click());
-window.dispatchEvent(new window.WheelEvent('wheel',{deltaY:100}));
-assert.equal(top.dataset.state,'idle','Manual scrolling cancels an in-progress return');
-window.scrollY=0;
 const { landingStrength } = await import('../src/motion/FooterLanding.jsx');
 assert.ok(landingStrength(2500)>landingStrength(150)+30,'Faster arrivals produce substantially stronger compression');
 assert.ok(landingStrength(100000)<=100,'Extreme input remains bounded');
@@ -496,5 +533,28 @@ assert.equal(mediaListeners.size,0,'Unmount cleans up media listener');
 assert.equal(sampleBlocks({left:0,top:0}).length,0,'Unmount cleans up block registry');
 assert.equal(frames.size,0,'Unmount cancels animation frames');
 console.error=originalError;
+// The ErrorBoundary fallback: it renders for a real crash, moves focus, and
+// shows no raw error text. getElementById('root') is stubbed across the import
+// so the module's own page mount cannot boot a second App into the test
+// container.
+const realGetElementById=document.getElementById;
+document.getElementById=id=>(id==='root'?null:realGetElementById.call(document,id));
+const {ErrorBoundary}=await import('../src/main.jsx');
+document.getElementById=realGetElementById;
+const crashHost=document.createElement('div');
+document.body.appendChild(crashHost);
+const crashRoot=createRoot(crashHost);
+const crash=()=>{throw new Error('secret.token=abc123');};
+await act(async()=>crashRoot.render(React.createElement(ErrorBoundary,null,React.createElement(crash))));
+const fallback=document.querySelector('[role="alert"]');
+assert.ok(fallback,'ErrorBoundary fallback renders an alert region');
+assert.equal(fallback.querySelector('h1').textContent,'Something went wrong','Fallback keeps its plain heading');
+assert.equal(fallback.querySelector('h1').getAttribute('tabindex'),'-1','Fallback heading is focusable but not tabbable');
+assert.equal(document.activeElement,fallback.querySelector('h1'),'Crash moves focus to the fallback heading');
+assert.doesNotMatch(fallback.textContent,/secret\.token|abc123/,'Fallback shows no raw error text');
+assert.doesNotMatch(document.body.textContent,/secret\.token/,'Page shows no raw error text');
+await act(async()=>crashRoot.unmount());
+crashHost.remove();
+assert.equal(document.querySelectorAll('[role="alert"]').length,0,'Fallback unmounts cleanly');
 console.log('PASS: content, project links, assets, anchors, disclosures, mobile navigation, and React render.');
 window.close();

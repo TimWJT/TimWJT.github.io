@@ -2,9 +2,11 @@ import { useEffect, useRef } from 'react';
 import './RainbowBar.css';
 
 // Only controls that use arrow keys themselves keep them. Buttons and links
-// (e.g. a clicked name letter) leave the rainbow working.
+// (e.g. a clicked name letter) leave the rainbow working. The whole hidden
+// design panel is listed, not just its inputs: the panel's rows are stepped
+// with Left/Right, and the rainbow would fight the row for every press.
 const controls = [
-  'input', 'textarea', 'select', 'iframe', '[contenteditable]:not([contenteditable=false])', '.play-square',
+  'input', 'textarea', 'select', 'iframe', '[contenteditable]:not([contenteditable=false])', '.play-square', '.style-panel',
   ...['slider', 'spinbutton', 'scrollbar', 'tab', 'tablist', 'menu', 'menubar', 'menuitem', 'listbox', 'option',
     'radio', 'radiogroup', 'grid', 'gridcell', 'tree', 'treeitem', 'textbox', 'combobox'].map(role => `[role=${role}]`),
 ].join(', ');

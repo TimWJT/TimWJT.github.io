@@ -82,7 +82,6 @@ export default function SpinningTop() {
     const hero = document.querySelector('.hero-stage');
     if (!hero) return;
     setScene(document.body);
-    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
     const woodClick = createWoodClick();
     let dock = createDockState();
     let flight = null;
@@ -142,12 +141,7 @@ export default function SpinningTop() {
       const dt = Math.min(0.04, previousTime === null ? 1 / 60 : (time - previousTime) / 1000);
       previousTime = time;
       let moving = true;
-      if (phase === 'returning') {
-        phaseTime += dt;
-        advanceDock(dock, dt);
-        if (window.scrollY <= 2) { phase = 'launching'; phaseTime = 0; }
-        else if (phaseTime > 4) { reset(); return; }
-      } else if (phase === 'launching') {
+      if (phase === 'launching') {
         phaseTime += dt;
         dock.tilt = dock.side * Math.min(RESTING_TILT, phaseTime * 4);
         if (phaseTime > 0.32) launch();
@@ -172,14 +166,20 @@ export default function SpinningTop() {
     controls.current = {
       click: () => { if (phase !== 'deployed') woodClick.play(); },
       poke() {
-        if (phase === 'deployed' || phase === 'returning' || phase === 'launching') return;
-        if (pokeDock(dock)) {
+        if (phase === 'deployed' || phase === 'launching') return;
+        const released = pokeDock(dock);
+        if (released && window.scrollY <= 2) {
           phaseTime = 0;
-          if (window.scrollY > 2) {
-            phase = 'returning';
-            window.scrollTo({ top: 0, behavior: preference.matches ? 'instant' : 'smooth' });
-          } else phase = 'launching';
-        } else phase = 'wobbling';
+          phase = 'launching';
+        } else {
+          // The dock lives in the sticky header, so it can be pressed from any
+          // scroll position, but the hero it would fly into may be far off
+          // screen. Down there a press is an ordinary wobble: the page is
+          // never moved for the reader, and a launch earned where nothing can
+          // be seen is dropped rather than banked for a later surprise.
+          if (released) dock.charge = 0;
+          phase = 'wobbling';
+        }
         render();
         wake();
       },
@@ -202,7 +202,6 @@ export default function SpinningTop() {
       if (bounds.bottom <= 80 || bounds.top >= window.innerHeight) reset();
       else render();
     };
-    const cancelReturn = () => { if (phase === 'returning') reset(); };
     const swipe = event => {
       const now = window.performance.now();
       const previous = pointer;
@@ -232,10 +231,8 @@ export default function SpinningTop() {
       }
       render();
     };
-    const key = event => {
-      if (event.key === 'Escape') reset();
-      else if (phase === 'returning' && ['PageDown', 'PageUp', 'ArrowDown', 'ArrowUp', 'End', 'Home', ' '].includes(event.key)) reset();
-    };
+    // Escape always puts the top back on its stand, wherever it is.
+    const key = event => { if (event.key === 'Escape') reset(); };
     const visibility = () => {
       window.cancelAnimationFrame(frame);
       frame = 0;
@@ -245,8 +242,6 @@ export default function SpinningTop() {
     window.addEventListener('scroll', scroll, { passive: true });
     window.addEventListener('pointermove', swipe, { passive: true });
     window.addEventListener('resize', resize);
-    window.addEventListener('wheel', cancelReturn, { passive: true });
-    window.addEventListener('touchstart', cancelReturn, { passive: true });
     window.addEventListener('keydown', key);
     document.addEventListener('visibilitychange', visibility);
     const unsubscribe = onBlockMotion(() => { if (phase === 'deployed' && !ticking) wake(); });
@@ -259,8 +254,6 @@ export default function SpinningTop() {
       window.removeEventListener('scroll', scroll);
       window.removeEventListener('pointermove', swipe);
       window.removeEventListener('resize', resize);
-      window.removeEventListener('wheel', cancelReturn);
-      window.removeEventListener('touchstart', cancelReturn);
       window.removeEventListener('keydown', key);
       document.removeEventListener('visibilitychange', visibility);
     };
@@ -270,7 +263,7 @@ export default function SpinningTop() {
     <button ref={buttonRef} className="top-toy" type="button"
       onClick={() => { controls.current.click?.(); controls.current.poke?.(); }}
       onKeyDown={event => { if (event.repeat && [' ', 'Enter'].includes(event.key)) event.preventDefault(); }}
-      aria-label="Wobble the top. Repeated presses release it into the hero.">
+      aria-label="Wobble the top. Two quick presses release it into the hero, but only near the top of the page.">
       <canvas ref={canvasRef} width="112" height="72" aria-hidden="true" />
     </button>
     {scene && createPortal(

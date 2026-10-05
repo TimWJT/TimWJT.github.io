@@ -1,16 +1,112 @@
+/*
+ * The colour system. Every token below is read somewhere, and each one has to
+ * mean exactly one thing:
+ *   --paper       the page itself, and the flip side of --ink on a panel
+ *   --surface     the one raised plane: the sticky header and mobile nav panel
+ *   --ink         body text
+ *   --muted       secondary text
+ *   --line        structural hairlines: row dividers, section rules
+ *   --accent      links, focus rings, emphasis
+ *   --accent-soft a wash of the accent, used behind ::selection
+ *   --border      the softer edge of a raised plane: the header rule
+ * The cream design is the :root default and is deliberately not one of the six
+ * palettes, so "no palette applied" and "back to normal" are the same thing.
+ * The dark Experience band and the blue Community band each redeclare the four
+ * tokens they consume on their own rule; see the note on each.
+ *
+ * The six palettes are the [data-palette="…"] blocks just below. They are CSS
+ * rather than JavaScript-written inline properties on purpose: the small classic
+ * script in index.html <head> only has to set one attribute before the first
+ * paint, and a rule loses to an inline property, so a stylesheet theme is the
+ * only kind that pre-paint trick can switch. The values there are the same
+ * values as src/data/palettes.js, which the suite compares text for text;
+ * change one and you must change the other.
+ */
 :root {
   font-family:'DM Sans',Arial,sans-serif;
-  color:#282a24;
-  background:#f5f4ed;
+  color:var(--ink);
+  background:var(--paper);
   font-synthesis:none;
   font-weight:400;
   --paper:#f5f4ed;
+  --surface:#f5f4ed;
   --ink:#282a24;
   --muted:#686a60;
   --line:#d4d5c8;
   --accent:#64704e;
+  --accent-soft:#d4ddad;
+  --border:#d4d5c8;
   --serif:'Instrument Serif',Georgia,serif;
   --display:'Manrope',Arial,sans-serif;
+}
+
+/*
+ * The six palettes, one block each, in the order of src/data/palettes.js.
+ * Position 0 of the cycle is the cream design above and has NO attribute, so
+ * these blocks never have to be undone - a palette is only ever applied by
+ * adding the attribute, and "back to normal" is the attribute being absent
+ * again. Nothing here redeclares --serif or --display: those are font stacks,
+ * not colour, and every palette reads the same two.
+ */
+[data-palette='moonlit'] {
+  --paper:#0a0a0c;
+  --surface:#141418;
+  --ink:#e8e6e3;
+  --muted:#8a8884;
+  --line:rgba(232, 230, 227, 0.16);
+  --accent:#6b9fff;
+  --accent-soft:#dbe5fb;
+  --border:rgba(255, 255, 255, 0.08);
+}
+[data-palette='parchment'] {
+  --paper:#f7f5f0;
+  --surface:#ffffff;
+  --ink:#1a1917;
+  --muted:#6b6860;
+  --line:#dedacf;
+  --accent:#c45d3e;
+  --accent-soft:#f7e3da;
+  --border:rgba(0, 0, 0, 0.08);
+}
+[data-palette='tide'] {
+  --paper:#0d1419;
+  --surface:#151f28;
+  --ink:#dde8ef;
+  --muted:#7a9199;
+  --line:rgba(221, 232, 239, 0.16);
+  --accent:#5ec4b6;
+  --accent-soft:#d5efeb;
+  --border:rgba(255, 255, 255, 0.07);
+}
+[data-palette='moss'] {
+  --paper:#111410;
+  --surface:#1a1e17;
+  --ink:#e2e8dc;
+  --muted:#8a9480;
+  --line:rgba(226, 232, 220, 0.16);
+  --accent:#8fad6e;
+  --accent-soft:#e3ecda;
+  --border:rgba(255, 255, 255, 0.07);
+}
+[data-palette='slate'] {
+  --paper:#12151a;
+  --surface:#1c2129;
+  --ink:#eef0f4;
+  --muted:#8891a0;
+  --line:rgba(238, 240, 244, 0.16);
+  --accent:#e8917a;
+  --accent-soft:#f9e4dc;
+  --border:rgba(255, 255, 255, 0.08);
+}
+[data-palette='paper'] {
+  --paper:#fafafa;
+  --surface:#ffffff;
+  --ink:#111111;
+  --muted:#666666;
+  --line:#e5e5e5;
+  --accent:#2563eb;
+  --accent-soft:#dce7fd;
+  --border:rgba(0, 0, 0, 0.08);
 }
 
 * {
@@ -48,8 +144,14 @@ a:focus-visible,button:focus-visible,summary:focus-visible {
   outline-offset:6px;
 }
 
+/* The old selection wash was a pale olive lifted from --accent, which is what
+   --accent-soft is for. The text colour stays a literal on purpose: selection is
+   a dark-on-pale pair in every theme, so --accent-soft is defined as a pale
+   opaque tint in all six palettes and this near-black sits on top of all of
+   them. Deriving it from --ink instead would break the two locked bands, whose
+   local --ink is cream. */
 ::selection {
-  background:#d4ddad;
+  background:var(--accent-soft);
   color:#22271a;
 }
 
@@ -111,8 +213,14 @@ li {
   position:sticky;
   top:0;
   z-index:20;
-  background:rgba(245,244,237,.96);
-  border-bottom:1px solid var(--line);
+  /* The header is the one raised plane, so it takes --surface and --border
+     rather than --paper and --line. In the cream design those two are the same
+     values, so this is visually identical today and only separates under a
+     palette. Opaque --surface first, because color-mix is the newer of the two
+     and an engine without it must not end up with a transparent bar. */
+  background:var(--surface);
+  background:color-mix(in srgb,var(--surface) 96%,transparent);
+  border-bottom:1px solid var(--border);
 }
 
 .nav {
@@ -650,13 +758,22 @@ details[open]>summary>span:last-child {
   color:var(--muted);
 }
 
+/*
+ * Deliberate override, and the reason the rest of the page is free to change
+ * colour. This band is a fixed near-black panel in all six palettes: it keeps
+ * its own background literal and redeclares every token it reads, so a palette
+ * written to :root provably cannot repaint it. What makes that provable, and
+ * what the palette suite asserts: the var()s used in this block are exactly the
+ * four tokens declared in it, so no :root write can reach inside. Any new
+ * consumer added to this band has to add its token to this list.
+ */
 .experience-section {
   background:#242922;
-  color:#f5f4ed;
   --ink:#f5f4ed;
   --muted:#b8c0ad;
   --line:#4b5444;
   --accent:#dceba6;
+  color:var(--ink);
 }
 .experience {
   display:grid;
@@ -668,7 +785,7 @@ details[open]>summary>span:last-child {
   margin-top:35px;
   font-size:clamp(2.375rem,4.4vw,4.125rem);
 }
-.experience-intro h2 em { color:#dceba6; }
+.experience-intro h2 em { color:var(--accent); }
 .experience-row {
   display:block;
   padding:32px 0;
@@ -691,7 +808,7 @@ details[open]>summary>span:last-child {
   width:32px;
   height:32px;
   border:1px solid var(--line);
-  color:#dceba6;
+  color:var(--accent);
 }
 .experience-row h3 {
   font-family:var(--display);
@@ -708,15 +825,20 @@ details[open]>summary>span:last-child {
   max-width:650px;
 }
 .experience-row .experience-context { font-size:.75rem; margin-bottom:20px; }
-.experience-row .stack-line { font-size:.75rem; margin-top:22px; color:#dceba6; }
+.experience-row .stack-line { font-size:.75rem; margin-top:22px; color:var(--accent); }
 
+/*
+ * The same deliberate override as .experience-section, in the site's one blue.
+ * The two are independent: neither band reads a token the other declares, and
+ * neither reads --paper, --surface, --border or --accent-soft.
+ */
 .community-section {
   background:#2a4db4;
-  color:#f5f4ed;
   --ink:#f5f4ed;
   --muted:#d3dcf7;
   --line:#6d88d4;
   --accent:#f4d77c;
+  color:var(--ink);
 }
 .community { padding-block:85px 95px; }
 .community-intro {
@@ -727,7 +849,7 @@ details[open]>summary>span:last-child {
   margin:0 0 55px;
 }
 .community-intro h2 { font-size:clamp(2.6rem,5.8vw,5.25rem); }
-.community-intro h2 em { color:#f4d77c; }
+.community-intro h2 em { color:var(--accent); }
 .community-intro>p { font-size:1rem; color:var(--muted); max-width:340px; justify-self:end; }
 .community-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); column-gap:36px; }
 .community-row { border-top:1px solid var(--line); padding:28px 0 0; min-width:0; }
@@ -735,7 +857,7 @@ details[open]>summary>span:last-child {
 .community-row h3 { font-family:var(--display); font-size:1.375rem; font-weight:500; letter-spacing:-.035em; }
 .community-row h3 a span { font-size:18px; margin-left:8px; }
 .community-row p { font-size:1rem; color:var(--muted); margin-top:12px; }
-.community-row .community-role { color:#f5f4ed; font-size:.875rem; }
+.community-row .community-role { color:var(--ink); font-size:.875rem; }
 .community-row details { margin-top:14px; }
 .community-row summary { gap:10px; font-size:.8125rem; }
 .community-featured {
@@ -749,7 +871,7 @@ details[open]>summary>span:last-child {
 }
 .community-featured h3 { font-size:clamp(1.6rem,2.4vw,2.2rem); }
 .community-stat { padding-left:40px; border-left:1px solid var(--line); }
-.community-stat strong { display:block; font-family:var(--serif); font-weight:400; font-size:clamp(5rem,9vw,9rem); line-height:1; letter-spacing:-.045em; color:#f4d77c; }
+.community-stat strong { display:block; font-family:var(--serif); font-weight:400; font-size:clamp(5rem,9vw,9rem); line-height:1; letter-spacing:-.045em; color:var(--accent); }
 .community-stat strong span { font-size:.5em; vertical-align:top; }
 .community-stat>span { display:block; font-size:.875rem; margin-top:12px; color:var(--muted); }
 .community-stat>span:last-child { margin-top:5px; }
@@ -907,8 +1029,9 @@ details[open]>summary>span:last-child {
     top:70px;
     left:0;
     right:0;
-    background:var(--paper);
-    border-bottom:1px solid var(--line);
+    /* Same raised plane as the bar it drops out of, so the two read as one. */
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
     padding:20px;
     gap:12px;
   }
@@ -1141,4 +1264,203 @@ details[open]>summary>span:last-child {
   .contact-links a:last-child { padding-right:0; }
   .contact-links a:nth-child(2) { padding-left:0; }
   .landing-tiles { grid-template-columns:repeat(12,minmax(0,1fr)); }
+}
+
+/* ---------------------------------------------------------------------------
+ * The physics hero (src/motion/PhysicsHero.jsx).
+ *
+ * Reachable with ?v2 or ?hero=physics, or from the Hero row of the hidden
+ * design panel. It replaces the text hero rather than sitting inside it: the
+ * component renders its own <section class="hero hero-physics" id="top">, so
+ * there is never a .hero inside a .hero and exactly one #top in the document.
+ *
+ * Every colour is a token, so all six palettes and the default cream design
+ * carry it. The scene has a real height because the component measures
+ * clientWidth/clientHeight and bails out of the simulation when either is 0.
+ * Tokens are hidden until the engine reports is-ready, because opacity keeps
+ * them measurable and display:none would collapse every body to its fallback
+ * size. Reduced motion never reaches this block at all: the component renders
+ * .physics-fallback instead, which is styled here too, because that static
+ * hero is the only thing a reduced-motion visitor ever sees.
+ * --------------------------------------------------------------------------- */
+.hero-physics {
+  width:min(1320px,calc(100% - 112px));
+  margin-inline:auto;
+  padding-top:120px;
+  padding-bottom:72px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);
+  grid-template-areas:'copy scene' 'controls scene';
+  align-items:end;
+  column-gap:48px;
+  row-gap:28px;
+  min-height:calc(100svh - 96px);
+}
+.physics-copy { grid-area:copy; }
+.physics-copy .eyebrow {
+  margin:0 0 18px;
+  font-size:.78rem;
+  font-weight:600;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+.physics-copy h1 {
+  margin:0 0 12px;
+  font-family:var(--serif);
+  font-weight:400;
+  font-size:clamp(3.4rem,9vw,7.5rem);
+  line-height:.92;
+  letter-spacing:-.02em;
+  color:var(--ink);
+}
+.physics-copy .hero-tagline {
+  margin:0 0 28px;
+  max-width:34ch;
+  font-size:clamp(1rem,1.6vw,1.2rem);
+  line-height:1.5;
+  color:var(--muted);
+}
+.physics-copy .hero-actions { display:flex; flex-wrap:wrap; gap:12px; }
+.physics-copy .btn {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:11px 20px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  font-size:.92rem;
+  font-weight:500;
+  text-decoration:none;
+  color:var(--ink);
+  background:var(--paper);
+  transition:background .18s ease, border-color .18s ease, color .18s ease;
+}
+.physics-copy .btn-primary {
+  background:var(--accent);
+  border-color:var(--accent);
+  color:var(--paper);
+}
+.physics-copy .btn:hover { border-color:var(--accent); }
+.physics-copy .btn-primary:hover { background:var(--ink); border-color:var(--ink); color:var(--paper); }
+.physics-copy .btn:focus-visible,
+.physics-token:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+
+.physics-scene {
+  grid-area:scene;
+  position:relative;
+  overflow:hidden;
+  height:clamp(320px,58svh,560px);
+  border:1px solid var(--border);
+  border-radius:20px;
+  background:var(--surface);
+  touch-action:pan-y;
+  cursor:grab;
+}
+.physics-scene.is-grabbing { cursor:grabbing; }
+.physics-token {
+  position:absolute;
+  left:0;
+  top:0;
+  display:inline-flex;
+  align-items:center;
+  padding:7px 16px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:var(--paper);
+  color:var(--ink);
+  font-size:.92rem;
+  font-weight:400;
+  white-space:nowrap;
+  user-select:none;
+  opacity:0;
+  transition:opacity .2s ease;
+}
+/* In the engine, not on the token: the tokens are hidden until the world
+   exists, and the transition is a fade, not a movement. */
+.physics-scene.is-ready .physics-token { opacity:1; }
+.physics-token--heavy {
+  background:var(--accent);
+  border-color:var(--accent);
+  color:var(--paper);
+  font-weight:600;
+  font-size:1.05rem;
+  padding:9px 20px;
+}
+
+.physics-controls {
+  grid-area:controls;
+  display:flex;
+  align-items:center;
+  gap:16px;
+}
+.physics-hint {
+  margin:0;
+  font-size:.9rem;
+  color:var(--muted);
+  transition:opacity .2s ease;
+}
+.physics-hint.is-hidden { opacity:0; }
+.physics-shake {
+  padding:9px 18px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:transparent;
+  color:var(--ink);
+  font:inherit;
+  font-size:.86rem;
+  cursor:pointer;
+  transition:background .18s ease, border-color .18s ease;
+}
+.physics-shake:hover { border-color:var(--accent); }
+.physics-shake:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+
+/* The static hero. No engine, no scene, no tokens: name, tagline and the same
+   words as pills, which is what a reduced-motion visitor gets. */
+.physics-fallback { max-width:44ch; }
+.physics-fallback .eyebrow {
+  margin:0 0 16px;
+  font-size:.78rem;
+  font-weight:600;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+.physics-fallback h1 {
+  margin:0 0 10px;
+  font-family:var(--serif);
+  font-weight:400;
+  font-size:clamp(3.4rem,9vw,7rem);
+  line-height:.94;
+  color:var(--ink);
+}
+.physics-fallback .hero-tagline { margin:0 0 26px; color:var(--muted); }
+.physics-fallback-tags {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin:0;
+  padding:0;
+  list-style:none;
+}
+.physics-fallback-tags .pill {
+  padding:7px 16px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  font-size:.92rem;
+}
+/* The component emits `pill` for a heavy token and `pill pill-ghost` for a
+   light one, so weight is the absence of the ghost class. */
+.physics-fallback-tags .pill:not(.pill-ghost) { font-weight:600; }
+.physics-fallback-tags .pill-ghost { color:var(--muted); }
+
+@media(max-width:900px) {
+  .hero-physics {
+    grid-template-columns:minmax(0,1fr);
+    grid-template-areas:'copy' 'scene' 'controls';
+    min-height:0;
+    padding-top:104px;
+    row-gap:22px;
+  }
+  .physics-scene { height:clamp(280px,52svh,420px); }
 }

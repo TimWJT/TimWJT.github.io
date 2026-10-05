@@ -8,6 +8,12 @@ import NameLetters from './motion/NameLetters';
 import PageCollapse from './motion/PageCollapse';
 import RainbowBar from './motion/RainbowBar';
 import CopyEmail from './motion/CopyEmail';
+import Terminal from './motion/Terminal';
+import PhysicsHero from './motion/PhysicsHero';
+import StylePanel from './components/StylePanel';
+import { PaletteProvider } from './context/PaletteContext';
+import { MotionProvider } from './context/MotionContext';
+import { VersionProvider, useVersion } from './context/VersionContext';
 import './index.css';
 const Arrow = () => <span aria-hidden="true">↗</span>;
 const resume = `${import.meta.env.BASE_URL}${profile.resume}`;
@@ -168,4 +174,18 @@ function Contact() {
   </footer>;
 }
 
-export default function App() { return <div id="top"><PageCollapse /><a className="skip-link" href="#main">Skip to content</a><Navigation /><main id="main"><Hero /><Work /><About /><Experience /><Community /></main><Contact /></div>; }
+function Site() {
+  const { version } = useVersion();
+  // PhysicsHero renders its own <section className="hero hero-physics" id="top">.
+  // The wrapper therefore drops its own id in that mode, so exactly one element
+  // in the document is #top in both modes and no .hero is nested in another.
+  // The wrapper element itself never unmounts, so switching back and forth does
+  // not remount the page; only PageCollapse is remounted (see key below).
+  const physics = version === 'physics';
+  // PageCollapse installs on document.getElementById('#top') in a mount-only
+  // effect, and #top changes element between the two heroes. Keying it by
+  // version remounts it so the effect runs again against the current element.
+  return <div {...(physics ? {} : { id: 'top' })}><PageCollapse key={version} /><Terminal /><a className="skip-link" href="#main">Skip to content</a><Navigation /><main id="main">{physics ? <PhysicsHero /> : <Hero />}<Work /><About /><Experience /><Community /></main><Contact /><StylePanel /></div>;
+}
+
+export default function App() { return <PaletteProvider><MotionProvider><VersionProvider><Site /></VersionProvider></MotionProvider></PaletteProvider>; }

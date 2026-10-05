@@ -161,11 +161,20 @@ let frameRequests = 0;
 window.requestAnimationFrame = () => { frameRequests++; return frameRequests; };
 const animations = [];
 window.Element.prototype.animate = function (keyframes, options) {
-  const animation = { node: this, keyframes, options, cancelled: false, cancel() { this.cancelled = true; } };
+  // Falls report 'finished' straight away, as if the reader watched them land;
+  // a test that needs one caught mid-fall sets playState back to 'running'.
+  const animation = {
+    node: this, keyframes, options, cancelled: false, playState: 'finished', playbackRate: 1, onfinish: null,
+    cancel() { this.cancelled = true; },
+    updatePlaybackRate(rate) { this.playbackRate = rate; this.playState = 'running'; },
+    finish() { this.playState = 'finished'; this.onfinish?.(); },
+  };
   animations.push(animation);
   return animation;
 };
 const active = () => animations.filter(animation => !animation.cancelled);
+// Let every running rebuild animation reach its end.
+const land = () => active().forEach(animation => animation.finish());
 const React = await import('react');
 const { createRoot } = await import('react-dom/client');
 const { default: PageCollapse, installPageCollapse } = await import('../src/motion/PageCollapse.jsx');
@@ -249,12 +258,64 @@ assert.ok(active().every(animation => !firstFall.includes(animation)), 'Replay c
 const replayCount = animations.length;
 for (let t = 3016; t < 3300; t += 16) wheel(Math.max(2, 180 - (t - 3016)), t);
 assert.equal(animations.length, replayCount, 'Momentum never restarts component animations');
+const landed = [...active()];
+const beforeRise = animations.length;
 wheel(-1, 3310);
-rebuilt('Upward wheel instantly restores existing transforms and properties');
+assert.ok(landed.every(animation => animation.cancelled), 'Landed falls hand over to the rebuild');
+assert.equal(animations.length, beforeRise + 5, 'Each fallen piece gets one rebuild animation');
+assert.equal(top.classList.contains('page-collapse-active'), true, 'The page stays clipped while it rebuilds');
+const rise = active();
+rise.forEach((animation, index) => {
+  const fall = landed[index];
+  assert.equal(animation.node, fall.node);
+  assert.equal(animation.options.composite, 'add', 'The rebuild composes with existing translate and rotate');
+  assert.equal(animation.options.fill, 'both', 'Waiting pieces stay where they landed');
+  assert.equal(animation.options.iterations, 1);
+  assert.equal(animation.keyframes[0].translate, fall.keyframes.at(-1).translate, 'The rebuild starts exactly where the fall ended');
+  assert.equal(animation.keyframes[0].rotate, fall.keyframes.at(-1).rotate);
+  assert.equal(animation.keyframes.at(-1).translate, '0px 0px', 'The rebuild ends home');
+  assert.equal(animation.keyframes.at(-1).rotate, '0deg');
+  assert.ok(animation.keyframes.some(frame => parseFloat(frame.translate.split(' ')[1]) < 0), 'Pieces overshoot home before settling');
+  assert.ok(animation.keyframes.every(frame => !('transform' in frame)));
+  assert.ok(animation.options.delay + animation.options.duration <= 1200, 'The whole rebuild stays brief');
+});
+assert.equal(rise.at(-1).options.delay, 0, 'The lowest piece rises first');
+assert.ok(rise.every((animation, index) => index === 0 || animation.options.delay < rise[index - 1].options.delay), 'The page restacks from the floor up');
+wheel(-1, 3326);
+window.scrollY = 4990;
+window.dispatchEvent(new window.Event('scroll'));
+assert.equal(animations.length, beforeRise + 5, 'Continued upward scrolling does not restart the rebuild');
+rise.slice(0, 4).forEach(animation => animation.finish());
+assert.equal(top.classList.contains('page-collapse-active'), true, 'Clipping holds until the last piece is home');
+rise[4].finish();
+rebuilt('Upward wheel rebuilds, then restores existing transforms and properties');
+window.scrollY = 5000;
+window.dispatchEvent(new window.Event('scroll'));
 three(4000);
 window.scrollY = 4999;
 window.dispatchEvent(new window.Event('scroll'));
+land();
 rebuilt('Upward actual scroll also rebuilds');
+three(4100);
+const caught = [...active()];
+caught.forEach(animation => { animation.playState = 'running'; });
+const beforeRewind = animations.length;
+wheel(-1, 4200);
+assert.equal(animations.length, beforeRewind, 'A fall caught midway is rewound, not replaced');
+assert.ok(caught.every(animation => !animation.cancelled && animation.playbackRate < -1), 'Rewinding runs backwards, faster than the fall');
+land();
+rebuilt('A rewound fall restores everything once it reaches the start');
+three(4300);
+wheel(-1, 4400);
+const abandoned = [...active()];
+three(4500);
+assert.ok(abandoned.every(animation => animation.cancelled), 'A fresh stomp abandons a rebuild underway');
+assert.equal(active().length, 5);
+abandoned.forEach(animation => animation.onfinish?.());
+assert.equal(active().length, 5, 'A stale rebuild cannot clear the new fall');
+wheel(-1, 4600);
+document.querySelector('#target a').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+rebuilt('Clicking during a rebuild restores at once');
 three(6000);
 window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
 rebuilt('Escape resets');
@@ -274,7 +335,8 @@ for (const reduced of [false, true]) {
   three(12000);
   assert.equal(active().length, 5, `Wheel collapse works with reduced motion ${reduced}`);
   wheel(-1, 13600);
-  rebuilt('Upward wheel resets with either preference');
+  land();
+  rebuilt('Upward wheel rebuilds with either preference');
   for (const resetKey of ['Escape', 'ArrowUp', 'PageUp', 'Home', ' ']) {
     key();
     assert.equal(active().length, 5, `Direct backslash works with reduced motion ${reduced}`);
@@ -286,7 +348,12 @@ for (const reduced of [false, true]) {
     key({ repeat: true });
     assert.equal(animations.length, afterReplay, 'Held backslash cannot spam replays');
     key({ key: resetKey, shiftKey: resetKey === ' ' });
-    rebuilt(`${resetKey} resets a direct collapse`);
+    if (resetKey === 'Escape') rebuilt('Escape restores a direct collapse at once');
+    else {
+      assert.equal(active().length, 5, `${resetKey} rebuilds rather than snapping back`);
+      land();
+      rebuilt(`${resetKey} rebuilds a direct collapse`);
+    }
   }
   for (const guard of ['ctrlKey', 'metaKey', 'altKey', 'shiftKey', 'repeat', 'isComposing']) {
     key({ [guard]: true });
@@ -320,7 +387,8 @@ for (const reduced of [false, true]) {
   key({}, host.firstElementChild);
   assert.equal(active().length, 5, 'Explicitly non-editable content allows backslash');
   wheel(-1, 15600);
-  rebuilt('Upward wheel resets a direct collapse');
+  land();
+  rebuilt('Upward wheel rebuilds a direct collapse');
   host.remove();
 }
 three(16000);
@@ -364,6 +432,7 @@ for (const start of [25000, 25700, 26400]) {
 assert.equal(active().length, 5, 'Three forceful finger swipes are equivalent');
 touch('touchstart', 250, 27000);
 touch('touchmove', 251, 27020);
+land();
 rebuilt('Downward finger movement means upward scrolling and restores');
 for (const start of [28000, 28700, 29400]) {
   touch('touchstart', 400, start);
@@ -433,6 +502,7 @@ const beforeGentle = animations.length;
 for (let t = 42056; t < 42200; t += 16) wheel(4, t);
 assert.equal(animations.length, beforeGentle, 'Gentle input while fallen never restomps');
 wheel(-1, 42200);
+land();
 wheel(200, 42300);
 wheel(200, 42340);
 wheel(200, 42380);
@@ -470,6 +540,6 @@ assert.equal(mediaSubscriptions, 0, 'Strict Mode never installs motion-preferenc
 const css = readFileSync('src/motion/PageCollapse.css', 'utf8');
 assert.match(css, /#top\.page-collapse-active\s*\{\s*overflow:\s*clip;/, 'Visual overflow is clipped without making a scroll container');
 assert.doesNotMatch(css, /(?:^|[;{])\s*(?:transform|position|height|contain|filter)\s*:/m, 'CSS does not capture fixed children or alter document height');
-console.log('PASS: bounded component and keyboard replay, no single-fling or mid-page trigger, reacceleration gesture detection (no required pause), small-delta/ramp/notch/inertia sequences, three-in-five, touch, wheel at bottom, viewport selection, backslash and keyboard guards, rebuild under both motion preferences, bounded independent effects, null React render, Strict Mode and listener cleanup.');
+console.log('PASS: staggered floor-up rebuild and mid-fall rewind on upward input, bounded component and keyboard replay, no single-fling or mid-page trigger, reacceleration gesture detection (no required pause), small-delta/ramp/notch/inertia sequences, three-in-five, touch, wheel at bottom, viewport selection, backslash and keyboard guards, rebuild under both motion preferences, bounded independent effects, null React render, Strict Mode and listener cleanup.');
 console.log('NOTE: jsdom has no browser layout or Web Animations renderer; real-device gesture feel, visual clipping and unchanged scrollHeight still need a browser check.');
 window.close();

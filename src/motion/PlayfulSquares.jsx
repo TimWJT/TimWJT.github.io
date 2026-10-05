@@ -104,6 +104,11 @@ export default function PlayfulSquares() {
         wake();
       },
     }));
+    // The one and only tap-to-toss impulse: a short flick up and to the
+    // right, with spin. Shared by the pointer release path below and the
+    // non-pointer activation path in api.toss, so a tap that arrives as a
+    // click and a tap that arrives as a pointerup cannot drift apart.
+    const launchToss = state => Object.assign(state, { vx: 65, vy: -190, spin: 110 });
     const release = (index, pointerId, cancel = false) => {
       const state = states[index];
       if (!state.drag || state.drag.id !== pointerId) return;
@@ -112,7 +117,7 @@ export default function PlayfulSquares() {
       nodes[index].classList.remove('is-dragging');
       if (nodes[index].hasPointerCapture?.(pointerId)) nodes[index].releasePointerCapture(pointerId);
       if (cancel) Object.assign(state, { x: 0, y: 0, vx: 0, vy: 0, angle: 0, spin: 0 });
-      else if (tapped && !preference.matches) Object.assign(state, { vx: 65, vy: -190, spin: 110 });
+      else if (tapped && !preference.matches) launchToss(state);
       bound(index);
       draw(index);
       wake();
@@ -159,7 +164,16 @@ export default function PlayfulSquares() {
       key(index, event) {
         const state = states[index];
         if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', ' ', 'Home', 'Escape'].includes(event.key)) return;
-        event.preventDefault();
+        // Only the four arrows are swallowed, because the square genuinely
+        // owns them: design/hero-art.md has the header rainbow keep its hands
+        // off focused controls (and RainbowBar already lists .play-square),
+        // which only makes sense if the control keeps them. Home and Space are
+        // different - both belong to the page, and eating them here means a
+        // reader who tabs onto a square can no longer scroll the way they
+        // arrived. Home still resets the square; it just no longer cancels
+        // the browser's own jump to the top. Enter and Escape are let through
+        // too, since nothing on the page acts on them once a square has focus.
+        if (event.key.startsWith('Arrow')) event.preventDefault();
         if (event.key === 'Escape' || event.key === 'Home') {
           if (state.drag) release(index, state.drag.id, true);
           Object.assign(state, { x: 0, y: 0, vx: 0, vy: 0, angle: 0, spin: 0 });
@@ -171,6 +185,25 @@ export default function PlayfulSquares() {
             if (!preference.matches) { state.vy = -150; state.spin = 95; }
           }
         }
+        bound(index);
+        draw(index);
+        wake();
+      },
+      // A role="button" that cannot be activated is a lie to assistive
+      // technology, and the tap-to-toss was previously reachable only from
+      // pointer events. Browsers fire click again after a genuine tap, so a
+      // plain onClick would toss twice. event.detail is the click count:
+      // 0 for a click synthesised by Enter, Space or a screen reader, and 1
+      // or more for a real pointer tap - which has already been handled by
+      // release(). Guarding on detail === 0 keeps the two paths separate and
+      // leaves the pointer behaviour exactly as it was.
+      toss(index, event) {
+        if (event.detail !== 0) return;
+        const state = states[index];
+        // Nothing to toss if a drag is still live, or if the reader has asked
+        // for reduced motion: release() honours the same preference.
+        if (state.drag || preference.matches) return;
+        launchToss(state);
         bound(index);
         draw(index);
         wake();
@@ -231,10 +264,11 @@ export default function PlayfulSquares() {
     <svg ref={svgRef} className="hero-geometry" viewBox="0 0 900 600" role="group" aria-label="Play with the squares">
       {squares.map((square, index) => <g key={square.color} className="square-scroll" data-cx={square.x + square.size / 2} data-cy={square.y + square.size / 2}>
         <g className="play-square" role="button" tabIndex="0"
-        aria-label={`${square.color === 'outline' ? 'Outlined' : square.color} square. Drag to move, arrow keys to nudge, Enter to toss, Home to reset.`}
+        aria-label={`${square.color === 'outline' ? 'Outlined' : square.color} square. Drag or click to move and toss, arrow keys to nudge, Enter or Space to toss, Escape or Home to reset. The arrow keys are used here; Space and Home still scroll the page.`}
         onPointerEnter={() => api.current.enter?.(index)} onPointerDown={event => api.current.down?.(index, event)} onPointerMove={event => api.current.move?.(index, event)}
         onPointerUp={event => api.current.up?.(index, event)} onPointerCancel={event => api.current.cancel?.(index, event)}
-        onLostPointerCapture={event => api.current.cancel?.(index, event)} onKeyDown={event => api.current.key?.(index, event)}>
+        onLostPointerCapture={event => api.current.cancel?.(index, event)} onKeyDown={event => api.current.key?.(index, event)}
+        onClick={event => api.current.toss?.(index, event)}>
         <rect className={`square-${square.color}`} x={square.x} y={square.y} width={square.size} height={square.size} />
       </g></g>)}
     </svg>

@@ -32,6 +32,9 @@ const root = createRoot(document.getElementById('root'));
 await act(async () => root.render(React.createElement(React.StrictMode, null, React.createElement(CopyEmail, { email: EMAIL }))));
 const button = document.querySelector('button');
 const status = document.querySelector('[role="status"]');
+// The live region is portalled to the end of the body, so it is never a
+// descendant of the button and never a child of the contact links nav.
+const live = document.querySelector('.contact-email-live');
 const clipboard = value => Object.defineProperty(navigator, 'clipboard', { configurable: true, value });
 const click = () => act(async () => { button.click(); });
 const defer = () => {
@@ -41,30 +44,39 @@ const defer = () => {
 };
 function assertPresentation(message = '') {
   const action = button.querySelector('.contact-email-action');
-  const success = message === 'Copied!';
-  assert.equal(button.querySelector('[role="status"]'), status, 'live region persists across updates');
-  assert.equal(button.querySelectorAll('[role="status"]').length, 1);
+  const failed = message === FAILURE;
+  const success = message !== '' && !failed;
+  // The region survives every update, and it is never a descendant of the
+  // control that holds focus while the copy runs.
+  assert.equal(document.querySelector('[role="status"]'), status, 'live region persists across updates');
+  assert.equal(document.querySelectorAll('[role="status"]').length, 1);
+  assert.equal(status, live);
+  assert.equal(status.parentElement, document.body, 'live region is portalled out of the button');
+  assert.equal(button.contains(status), false, 'live region is not a descendant of the button');
+  assert.equal(status.isConnected, true, 'live region stays in the document on success');
   assert.equal(status.textContent, message);
   assert.equal(status.getAttribute('aria-atomic'), 'true');
   assert.equal(status.closest('[aria-hidden="true"]'), null, 'live region stays accessible');
   assert.equal(action.getAttribute('aria-hidden'), 'true', 'visual action is not announced twice');
-  assert.equal(action.textContent, success ? 'Copied!' : 'Copy');
+  assert.equal(action.textContent, success ? message : 'Copy');
   assert.equal(action.querySelectorAll('svg').length, success ? 0 : 1);
   assert.equal(action.querySelector('.contact-email-action-label')?.textContent, success ? undefined : 'Copy');
   assert.equal(button.querySelector('.contact-email-address').textContent, EMAIL);
+  // The failure sentence stays on screen for sighted readers while the live
+  // region carries it for assistive technology, so it is never read twice.
+  const visibleFailure = button.querySelector('.contact-email-failure');
+  assert.equal(visibleFailure?.textContent ?? '', failed ? FAILURE : '');
+  assert.equal(visibleFailure?.getAttribute('aria-hidden') ?? null, failed ? 'true' : null);
   const statusStyle = window.getComputedStyle(status);
   assert.notEqual(statusStyle.display, 'none');
   assert.notEqual(statusStyle.visibility, 'hidden');
-  assert.equal(statusStyle.clipPath === 'inset(50%)', success, 'only success is visually clipped');
-  const visible = button.cloneNode(true);
-  if (success) {
-    assert.equal(statusStyle.position, 'absolute');
-    assert.equal(statusStyle.width, '1px');
-    assert.equal(statusStyle.height, '1px');
-    assert.equal(statusStyle.overflow, 'hidden');
-    visible.querySelector('[role="status"]').remove();
-  }
-  assert.equal(visible.textContent, EMAIL + (success ? 'Copied!' : message + 'Copy'), 'one visible message, with email unchanged');
+  // Always clipped: the live region only ever talks, it is never shown.
+  assert.equal(statusStyle.clipPath, 'inset(50%)');
+  assert.equal(statusStyle.position, 'absolute');
+  assert.equal(statusStyle.width, '1px');
+  assert.equal(statusStyle.height, '1px');
+  assert.equal(statusStyle.overflow, 'hidden');
+  assert.equal(button.textContent, EMAIL + (success ? message : message + 'Copy'), 'one visible message, with email unchanged');
 }
 let fallbackCalls = 0;
 document.execCommand = () => { fallbackCalls++; return false; };
@@ -72,6 +84,9 @@ assert.equal(button.type, 'button');
 assert.equal(document.querySelector('a'), null);
 assert.equal(status.getAttribute('aria-live'), 'polite');
 assert.equal(status.textContent, '');
+assert.equal(button.contains(status), false, 'announcement region is outside the focused button');
+assert.equal(document.querySelectorAll('.contact-email-live').length, 1);
+assert.equal(status.parentElement, document.body);
 assert.equal(document.querySelector('.contact-email-address').textContent, EMAIL);
 assertPresentation();
 assert.equal(timers.size, 0);
@@ -96,6 +111,7 @@ assertPresentation();
 
 // Fallback selects the exact email, removes its temporary field and restores focus.
 const other = document.getElementById('other');
+const fallbackMessages = ['Copied again!', 'Copied again!', 'Same email!', 'Same email!'];
 for (const api of [undefined, {}, { writeText: async () => { throw new Error('denied'); } }, { writeText: () => { throw new Error('sync denial'); } }]) {
   clipboard(api);
   other.focus();
@@ -111,7 +127,7 @@ for (const api of [undefined, {}, { writeText: async () => { throw new Error('de
     return true;
   };
   await click();
-  assertPresentation('Copied!');
+  assertPresentation(fallbackMessages.shift());
   assert.equal(field.isConnected, false);
   assert.equal(document.querySelector('textarea'), null);
   assert.equal(document.activeElement, other);
@@ -145,11 +161,11 @@ assertPresentation();
 await click();
 assertPresentation();
 await act(async () => fast.resolve());
-assertPresentation('Copied!');
+assertPresentation('Same email!');
 let staleFallback = 0;
 document.execCommand = () => { staleFallback++; return false; };
 await act(async () => slow.reject(new Error('late denial')));
-assertPresentation('Copied!');
+assertPresentation('Same email!');
 assert.equal(staleFallback, 0);
 assert.equal(timers.size, 1);
 
@@ -168,6 +184,28 @@ for (const reject of [false, true]) {
   assert.equal(staleFallback, 0);
   assert.equal(document.querySelector('textarea'), null);
 }
+// Repeat copies escalate the confirmation; failures and a fresh mount do not count.
+const expected = ['Copied!', 'Copied!', 'Copied again!', 'Copied again!', 'Same email!', 'Same email!', 'Same email!',
+  'Just email me :)', 'Just email me :)', 'Just email me :)', 'Just email me :)', 'I’m flattered.', 'I’m flattered.'];
+for (const remount of [false, true]) {
+  const nextRoot = createRoot(document.getElementById('root'));
+  await act(async () => nextRoot.render(React.createElement(CopyEmail, { email: EMAIL })));
+  const copyButton = document.querySelector('button');
+  for (const [index, message] of expected.entries()) {
+    if (index === 4) {
+      clipboard({ writeText: async () => { throw new Error('denied'); } });
+      document.execCommand = () => false;
+      await act(async () => copyButton.click());
+      assert.equal(document.querySelector('[role="status"]').textContent, FAILURE, `remount ${remount}: failure in the middle of a streak`);
+    }
+    clipboard({ writeText: async () => {} });
+    await act(async () => copyButton.click());
+    assert.equal(document.querySelector('[role="status"]').textContent, message, `remount ${remount}: copy ${index + 1}`);
+    assert.equal(copyButton.querySelector('.contact-email-action').textContent, message);
+  }
+  await act(async () => nextRoot.unmount());
+  timers.clear();
+}
 assert.match(css, /user-select:\s*text/);
 assert.doesNotMatch(css, /display:\s*none|visibility:\s*hidden/);
 for (const match of css.replace(/\/\*[^]*?\*\//g, '').matchAll(/([^{}]+)\{/g)) {
@@ -175,4 +213,4 @@ for (const match of css.replace(/\/\*[^]*?\*\//g, '').matchAll(/([^{}]+)\{/g)) {
 }
 assert.equal(window.location.href, 'https://example.test/', 'no navigation');
 dom.window.close();
-console.log('PASS: idle icon + Copy, success-only action, persistent accessible live region, single visible failure, email clipboard success, denial fallback, exact selection, focus/textarea cleanup, repeat races, 2500ms timer and unmount cleanup.');
+console.log('PASS: idle icon + Copy, success-only action, accessible live region outside the button, single visible failure, email clipboard success, denial fallback, exact selection, focus/textarea cleanup, repeat races, 2500ms timer, escalating repeat-copy confirmations and unmount cleanup.');

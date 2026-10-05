@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
 /**
  * Which hero treatment to render.
@@ -6,12 +6,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
  *   classic — the original text hero. Default, unchanged.
  *   physics — interactive Matter.js hero.
  *
- * Selected by ?v2 / ?hero=physics in the URL, or persisted in localStorage via
- * the debug panel. Keeping both in the bundle means the classic version is
- * always one switch away if the physics one misbehaves.
+ * Selected by the URL only: an explicit ?hero=<name> wins, and ?v2 is the
+ * shorthand for the physics one. Nothing is stored, so a reload re-reads the
+ * address bar. Keeping both in the bundle means the classic version is always
+ * one switch away if the physics one misbehaves.
  */
 
-const STORAGE_KEY = 'timwang-hero';
 const VERSIONS = ['classic', 'physics'];
 
 const VersionContext = createContext(null);
@@ -20,11 +20,11 @@ function readInitial() {
   if (typeof window === 'undefined') return 'classic';
   try {
     const params = new URLSearchParams(window.location.search);
-    if (params.has('v2')) return 'physics';
+    // An explicit choice beats the shorthand: ?v2&hero=classic is a reader
+    // asking for the classic hero, not for a contradiction to be resolved.
     const named = params.get('hero');
     if (named && VERSIONS.includes(named)) return named;
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved && VERSIONS.includes(saved)) return saved;
+    if (params.has('v2')) return 'physics';
   } catch {
     /* ignore */
   }
@@ -33,15 +33,6 @@ function readInitial() {
 
 export function VersionProvider({ children }) {
   const [version, setVersion] = useState(readInitial);
-
-  useEffect(() => {
-    try {
-      if (version === 'classic') window.localStorage.removeItem(STORAGE_KEY);
-      else window.localStorage.setItem(STORAGE_KEY, version);
-    } catch {
-      /* ignore */
-    }
-  }, [version]);
 
   const toggle = useCallback(() => {
     setVersion((v) => (v === 'classic' ? 'physics' : 'classic'));

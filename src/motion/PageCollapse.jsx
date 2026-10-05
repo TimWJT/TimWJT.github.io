@@ -4,9 +4,21 @@ import './PageCollapse.css';
 
 const PIECE = '[data-collapse-piece], .footer-landing .landing-tile';
 const ACTIVE = 'page-collapse-active';
-const PROTECTED = '.site-header, nav, .skip-link, .hero-art, .deployed-top, .top-toy';
+// The hidden design panel and the full-screen terminal are fixed overlays that
+// are portalled to the body, so they are already outside the pieces the page
+// collapse can select; naming them keeps a shared ancestor from dropping them
+// anyway, and keeps a future in-place mount from falling over with the page.
+const PROTECTED = '.site-header, nav, .skip-link, .hero-art, .deployed-top, .top-toy, .style-panel, .terminal-overlay';
 const STRUCTURAL = '#top, main, .hero-stage, .hero-scroll-scene, .footer-landing, .landing-tiles';
 const MAX_PIECES = 48;
+// Scrolling back up rebuilds the page instead of snapping it back: each fallen
+// piece lifts, overshoots its home a little and settles, the lowest piece
+// first so the page restacks from the floor up. The whole stagger is shared
+// across however many pieces fell, so a long page is no slower than a short one.
+const RISE_MS = 750;
+const RISE_STAGGER_MS = 360;
+// A piece caught mid-fall is rewound from wherever it got to instead.
+const REWIND_RATE = 1.8;
 
 // Interface: mount <PageCollapse /> anywhere inside #top. Mark DISJOINT content
 // wrappers data-collapse-piece (no value needed). Suggested existing nodes:
@@ -40,29 +52,85 @@ export function installPageCollapse(root, view = window) {
   const doc = root.ownerDocument;
   const gestures = createCollapseGesture();
   const animations = [];
+  // One entry per falling piece, with where its fall ends, so the rebuild can
+  // start from exactly there without reading layout or computed styles.
+  let fallen = [];
+  // Bumped whenever the current animations are replaced or cleared, so a
+  // finish event from an older rebuild cannot end a newer one.
+  let generation = 0;
+  let rebuilding = false;
   const listeners = [];
   let addedClass = false;
   let previousY = view.scrollY;
   let touch = null;
   const atBottom = () => (doc.scrollingElement || doc.documentElement).scrollHeight - view.innerHeight - view.scrollY <= 4;
   const enabled = () => !doc.hidden;
-  // Upward movement: restore the page but keep counted swipes.
-  const release = () => {
-    gestures.release();
+  const clear = () => {
+    generation++;
+    rebuilding = false;
+    fallen = [];
     animations.splice(0).forEach(animation => animation.cancel());
     if (addedClass) root.classList.remove(ACTIVE);
     addedClass = false;
   };
+  // Animate every fallen piece home, then clear. Repeated upward input while
+  // the page is rebuilding changes nothing; a fresh stomp or any instant reset
+  // still takes over at once.
+  const rebuild = () => {
+    if (rebuilding) return;
+    if (!fallen.length) { clear(); return; }
+    const pieces = fallen;
+    const current = ++generation;
+    fallen = [];
+    rebuilding = true;
+    animations.length = 0;
+    let pending = pieces.length;
+    const settled = () => { if (current === generation && --pending === 0) clear(); };
+    const step = pieces.length > 1 ? Math.min(80, RISE_STAGGER_MS / (pieces.length - 1)) : 0;
+    try {
+      pieces.forEach(({ piece, fall, landing }, index) => {
+        if (fall.playState !== 'finished' && typeof fall.updatePlaybackRate === 'function') {
+          fall.updatePlaybackRate(-REWIND_RATE);
+          fall.onfinish = settled;
+          animations.push(fall);
+          return;
+        }
+        fall.cancel();
+        const { x, y, tilt } = landing;
+        // fill 'both' holds the piece where it landed until its turn comes.
+        const rise = piece.animate([
+          { translate: `${x}px ${y}px`, rotate: `${tilt}deg`, offset: 0, easing: 'cubic-bezier(.25,.7,.35,1)' },
+          { translate: '0px -12px', rotate: `${-tilt * 0.25}deg`, offset: 0.6, easing: 'ease-in-out' },
+          { translate: '0px 4px', rotate: '0deg', offset: 0.82, easing: 'ease-in-out' },
+          { translate: '0px 0px', rotate: '0deg', offset: 1 },
+        ], { duration: RISE_MS, delay: Math.round((pieces.length - 1 - index) * step), iterations: 1, fill: 'both', composite: 'add' });
+        rise.onfinish = settled;
+        animations.push(rise);
+      });
+    } catch {
+      // Falls not yet handed over are no longer tracked by clear(), so cancel
+      // them here too: a failed rebuild must still restore the page.
+      pieces.forEach(({ fall }) => fall.cancel());
+      clear();
+    }
+  };
+  // Upward movement: rebuild the page but keep counted swipes.
+  const release = () => {
+    gestures.release();
+    rebuild();
+  };
   const reset = () => {
     gestures.reset();
-    animations.splice(0).forEach(animation => animation.cancel());
-    if (addedClass) root.classList.remove(ACTIVE);
-    addedClass = false;
+    clear();
   };
   const collapse = () => {
     if (!enabled()) return;
     // Replace, never stack: cancel first so selection uses the original
-    // positions, even when the previous fall moved a piece out of view.
+    // positions, even when the previous fall moved a piece out of view. This
+    // also abandons a rebuild that is still underway.
+    generation++;
+    rebuilding = false;
+    fallen = [];
     animations.splice(0).forEach(animation => animation.cancel());
     const pieces = selectPieces(root, view).filter(node => typeof node.animate === 'function');
     if (!pieces.length) { reset(); return; }
@@ -72,20 +140,23 @@ export function installPageCollapse(root, view = window) {
       pieces.forEach((piece, index) => {
         const side = index % 2 ? -1 : 1;
         const drop = Math.max(140, Math.min(360, view.innerHeight * 0.4)) + (index % 5) * 18;
+        const tilt = side * (2 + index % 4);
         // Shared first 300ms shakes all pieces in sync, then each drops/settles.
         // Additive individual properties also preserve an existing translate
         // or rotate on the piece itself, not just its transform/child motion.
-        animations.push(piece.animate([
+        const fall = piece.animate([
           { translate: '0px 0px', rotate: '0deg', offset: 0 },
           { translate: '-14px 0px', rotate: '-1deg', offset: 0.05 },
           { translate: '14px 3px', rotate: '1deg', offset: 0.10 },
           { translate: '-11px -2px', rotate: '-0.8deg', offset: 0.16 },
           { translate: '11px 2px', rotate: '0.8deg', offset: 0.22 },
           { translate: '0px 0px', rotate: '0deg', offset: 0.28, easing: 'cubic-bezier(.55,0,1,.45)' },
-          { translate: `${side * 10}px ${drop}px`, rotate: `${side * (2 + index % 4)}deg`, offset: 0.76 },
+          { translate: `${side * 10}px ${drop}px`, rotate: `${tilt}deg`, offset: 0.76 },
           { translate: `${side * 8}px ${drop - 8}px`, rotate: `${side * (1 + index % 4)}deg`, offset: 0.88 },
-          { translate: `${side * 10}px ${drop}px`, rotate: `${side * (2 + index % 4)}deg`, offset: 1 },
-        ], { duration: 1100, iterations: 1, fill: 'forwards', easing: 'ease-out', composite: 'add' }));
+          { translate: `${side * 10}px ${drop}px`, rotate: `${tilt}deg`, offset: 1 },
+        ], { duration: 1100, iterations: 1, fill: 'forwards', easing: 'ease-out', composite: 'add' });
+        animations.push(fall);
+        fallen.push({ piece, fall, landing: { x: side * 10, y: drop, tilt } });
       });
       gestures.markCollapsed();
     } catch {
@@ -134,7 +205,10 @@ export function installPageCollapse(root, view = window) {
   const clearTouch = () => { touch = null; };
   const configure = () => { reset(); clearTouch(); previousY = view.scrollY; };
   const key = event => {
-    if (['Escape', 'ArrowUp', 'PageUp', 'Home'].includes(event.key) || (event.key === ' ' && event.shiftKey)) reset();
+    // Escape is an instant undo. The scroll-up keys rebuild like any other
+    // upward scroll, but still forget counted swipes.
+    if (event.key === 'Escape') reset();
+    else if (['ArrowUp', 'PageUp', 'Home'].includes(event.key) || (event.key === ' ' && event.shiftKey)) { gestures.reset(); rebuild(); }
     if (event.key !== '\\' || event.repeat || event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
     if (doc.designMode?.toLowerCase() === 'on') return;
     const path = event.composedPath?.() ?? [event.target];

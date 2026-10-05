@@ -24,16 +24,10 @@
   user-select: text;
 }
 
-/* Failure stays visible so the address can be selected and copied manually. */
-.contact-email .contact-email-status {
-  font-size: 0.65em;
-  line-height: 1.4;
-  letter-spacing: 0;
-  overflow-wrap: anywhere;
-}
-
-/* Keep success available to screen readers without a second visible message. */
-.contact-email .contact-email-status-hidden {
+/* The live region is portalled to the end of <body>, so it needs no descendant
+   selector. It stays out of flow: the 1px clipped box must not add a line to
+   the bottom of the page, and it must not sit under anything clickable. */
+.contact-email-live {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -43,6 +37,16 @@
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
+  pointer-events: none;
+}
+
+/* Failure stays visible so the address can be selected and copied manually.
+   The live region carries the same sentence, so this copy is aria-hidden. */
+.contact-email .contact-email-failure {
+  font-size: 0.65em;
+  line-height: 1.4;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
 }
 
 .contact-email .contact-email-copied {

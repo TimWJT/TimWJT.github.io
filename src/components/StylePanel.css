@@ -1,0 +1,279 @@
+/*
+ * The hidden design panel.
+ *
+ * This stylesheet did not exist: the component was written and then switched
+ * off, so every class in its markup — style-panel, panel-head, panel-title,
+ * panel-close, panel-row, panel-row-label, panel-controls, panel-info,
+ * panel-count, motion-tag, panel-version, palette-swatches, swatch, panel-expand,
+ * motion-list, motion-option — was undefined in the built site. It is written
+ * here from the same tokens the rest of the page uses, with the cream :root
+ * values as a literal fallback per token, so the panel still reads correctly if
+ * it is ever rendered without the stylesheet's :root and follows whichever
+ * palette is applied rather than hard-coding a theme that would fight the page.
+ *
+ * Placement. Bottom right, because that is the one corner nothing else claims:
+ *   .site-header    z-index 20, sticky, full width across the top
+ *   .deployed-top   z-index 60, the physics top, repositioned near the top
+ *   .skip-link      z-index 100, top left
+ * This panel sits at 50 — above the page, below the deployed top and the skip
+ * link, and well under the terminal overlay at 200. Nothing here touches #top,
+ * so the sticky header and the fixed top are unaffected.
+ *
+ * .panel-control is on every interactive control in the panel. It is the
+ * contract src/motion/RainbowBar.jsx and src/motion/PageCollapse.jsx register
+ * against, so a selector that names it keeps the panel's keys and its clicks to
+ * itself.
+ */
+
+.style-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(19rem, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  /* Scrolling the panel must not scroll the page behind it. */
+  overscroll-behavior: contain;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--border, var(--line, #d4d5c8));
+  border-radius: 4px;
+  background: var(--surface, var(--paper, #f5f4ed));
+  color: var(--ink, #282a24);
+  font-family: inherit;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  box-shadow: 0 6px 20px #282a241f;
+  animation: style-panel-in 140ms ease-out both;
+}
+
+/* Browsing every motion style needs a little more room, and no more. */
+.style-panel.is-expanded {
+  width: min(22rem, calc(100vw - 32px));
+}
+
+@keyframes style-panel-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line, #d4d5c8);
+}
+
+.panel-title {
+  margin: 0;
+  color: var(--muted, #686a60);
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.panel-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line, #d4d5c8);
+}
+
+.panel-head + .panel-row {
+  /* The head already draws the first divider. */
+  padding-top: 0;
+  border-top: 0;
+}
+
+.panel-row-label {
+  margin: 0;
+  color: var(--muted, #686a60);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.panel-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-info {
+  /* The name and description are the long part and must be allowed to shrink
+     and wrap rather than pushing the arrows out of the panel. */
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+}
+
+.panel-info strong {
+  font-weight: 600;
+}
+
+.panel-info span {
+  color: var(--muted, #686a60);
+}
+
+.panel-count {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+}
+
+/* A small flag on a name: "Try" for an experimental motion style, "Base" for
+   the shipped cream design, which is not one of the six palettes. */
+.motion-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent-soft, #d4ddad);
+  color: var(--ink, #282a24);
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+
+/* Every control in the panel, and the selector the other two eggs register. */
+.panel-control {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 1px solid var(--line, #d4d5c8);
+  border-radius: 3px;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.panel-control:hover {
+  background: var(--accent-soft, #d4ddad);
+}
+
+/* The global focus ring is 6px out, which is clipped by the panel's own
+   overflow box; the same accent, pulled in to the control. */
+.panel-control:focus-visible {
+  outline: 2px solid var(--accent, #64704e);
+  outline-offset: 2px;
+}
+
+/* The two arrows around a cycling row are small squares. */
+.panel-controls > .panel-control {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.panel-close {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.panel-version,
+.motion-option {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.panel-version strong,
+.motion-option strong {
+  font-weight: 600;
+}
+
+.panel-version span,
+.motion-option span {
+  color: var(--muted, #686a60);
+}
+
+.palette-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line, #d4d5c8);
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line, #d4d5c8);
+  border-radius: 3px;
+  padding: 0;
+}
+
+.swatch.active {
+  /* A ring rather than a fill, so the theme underneath still reads. */
+  outline: 2px solid var(--accent, #64704e);
+  outline-offset: 2px;
+}
+
+/* No hover background on a swatch: its gradient is an inline style, so it
+   survives every rule here and the theme stays visible under the cursor. */
+
+.panel-expand {
+  padding: 6px 8px;
+  border-style: dashed;
+  color: var(--muted, #686a60);
+  font-size: 0.64rem;
+}
+
+.motion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 42vh;
+  margin: 0;
+  padding: 10px 0 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  border-top: 1px solid var(--line, #d4d5c8);
+}
+
+.motion-option.active {
+  border-color: var(--accent, #64704e);
+  /* A left bar, so the active row is obvious without changing its height. */
+  box-shadow: inset 2px 0 0 var(--accent, #64704e);
+}
+
+@media (max-width: 520px) {
+  .style-panel {
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    width: auto;
+    max-height: 60vh;
+  }
+}
+
+/* The site default is less motion means no motion, and the global reset
+   (animation:none!important) already covers this fade. It is restated because
+   the two deliberate exemptions on this site — the rainbow and the page
+   collapse — are restated the same way, so nobody has to go looking. */
+@media (prefers-reduced-motion: reduce) {
+  .style-panel {
+    animation: none !important;
+  }
+}

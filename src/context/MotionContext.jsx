@@ -2,36 +2,26 @@ import { createContext, useContext, useState } from 'react';
 import { motionPresets } from '../data/motionPresets';
 
 const MotionContext = createContext(null);
-const STORAGE_KEY = 'timwang-motion';
-const VALID_IDS = new Set(motionPresets.map((p) => p.id));
+
+// The site stores nothing that outlives a tab, so a preset lives in React state
+// for this page view only: reloading starts again at the default below. The
+// design panel can still reach it through the provider's own methods.
+const DEFAULT_ID = 'full';
 
 function readInitialIndex() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved && !VALID_IDS.has(saved)) {
-    localStorage.removeItem(STORAGE_KEY);
-  }
-  if (saved && VALID_IDS.has(saved)) {
-    return motionPresets.findIndex((p) => p.id === saved);
-  }
-  return motionPresets.findIndex((p) => p.id === 'full');
+  return motionPresets.findIndex((p) => p.id === DEFAULT_ID);
 }
 
 export function MotionProvider({ children }) {
   const [index, setIndex] = useState(readInitialIndex);
   const motion = motionPresets[index] ?? motionPresets[1];
 
-  const save = (nextIndex) => {
-    localStorage.setItem(STORAGE_KEY, motionPresets[nextIndex].id);
-    return nextIndex;
-  };
-
-  const next = () => setIndex((i) => save((i + 1) % motionPresets.length));
-  const prev = () => setIndex((i) => save((i - 1 + motionPresets.length) % motionPresets.length));
+  const next = () => setIndex((i) => (i + 1) % motionPresets.length);
+  const prev = () => setIndex((i) => (i - 1 + motionPresets.length) % motionPresets.length);
   const setById = (id) => {
     const i = motionPresets.findIndex((p) => p.id === id);
     if (i >= 0) {
       setIndex(i);
-      localStorage.setItem(STORAGE_KEY, id);
     }
   };
 

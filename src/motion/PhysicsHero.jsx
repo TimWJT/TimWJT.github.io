@@ -9,6 +9,14 @@ import { profile, physicsHero } from '../data/content';
  * Physics runs in Matter; rendering is plain DOM elements moved by transform
  * each frame, so the pills keep real fonts and palette colours instead of
  * being drawn into a canvas.
+ *
+ * Two traps are worth knowing about before changing anything here. Matter's
+ * Runner.run starts a brand new frame loop on every call and Runner.stop can
+ * only cancel the most recent one, so waking an already running runner would
+ * leave an orphan loop ticking after unmount; every start and stop therefore
+ * goes through the guarded pair inside the effect. And Matter's Mouse binds
+ * its own DOM listeners, so the ones kept for dragging have to be removed by
+ * hand, the same way the scroll-eating ones are dropped below.
  */
 
 const WALL = 200;
@@ -41,6 +49,7 @@ export default function PhysicsHero() {
   const nodesRef = useRef([]);
   const engineRef = useRef(null);
   const runnerRef = useRef(null);
+  const startRef = useRef(null);
   const rafRef = useRef(0);
   const wallsRef = useRef([]);
   const bodiesRef = useRef([]);
@@ -64,16 +73,18 @@ export default function PhysicsHero() {
 
     const { Engine, Runner, Composite, Bodies, Body, Mouse, MouseConstraint, Events } = Matter;
 
-    const engine = Engine.create({ gravity: { x: 0, y: 1, scale: 0.0011 } });
-    engineRef.current = engine;
-
     const measure = () => ({
       w: scene.clientWidth,
       h: scene.clientHeight,
     });
 
+    // Measure before anything is allocated: a scene with no box (a hidden
+    // ancestor, or jsdom) has nothing to simulate and nothing to clean up.
     let { w, h } = measure();
     if (w === 0 || h === 0) return undefined;
+
+    const engine = Engine.create({ gravity: { x: 0, y: 1, scale: 0.0011 } });
+    engineRef.current = engine;
 
     const buildWalls = (width, height) => {
       wallsRef.current.forEach((wall) => Composite.remove(engine.world, wall));
@@ -97,9 +108,13 @@ export default function PhysicsHero() {
       const bw = rect.width || 90;
       const bh = rect.height || 34;
       const spread = 0.14 + (i / Math.max(1, nodesRef.current.length - 1)) * 0.72;
+      // Drop them in from just above the top edge, staggered so the pile does
+      // not arrive as one clump. They used to be seeded hundreds of pixels
+      // higher, where the ceiling wall caught them and most of the pile formed
+      // outside the visible hero.
       const body = Bodies.rectangle(
         w * spread + (Math.random() - 0.5) * 40,
-        -120 - i * 90 - Math.random() * 140,
+        -bh * (1.2 + (i % 4) * 0.35) - i * 4,
         bw,
         bh,
         {
@@ -144,10 +159,17 @@ export default function PhysicsHero() {
 
     const runner = Runner.create();
     runnerRef.current = runner;
-    Runner.run(runner, engine);
 
-    // Sync DOM to physics.
+    // True while a Matter frame loop is in flight. Matter keeps no such flag of
+    // its own, and one loop per wake is the only way Runner.stop can be
+    // trusted to actually stop.
+    let running = false;
+
+    // Sync DOM to physics. One frame is ever in flight, and none is asked for
+    // while the pile is asleep or the tab is hidden.
     const draw = () => {
+      rafRef.current = 0;
+      if (!running) return;
       for (let i = 0; i < live.length; i += 1) {
         const body = live[i];
         const node = nodesRef.current[bodies.indexOf(body)];
@@ -156,10 +178,23 @@ export default function PhysicsHero() {
           `translate3d(${body.position.x}px, ${body.position.y}px, 0) ` +
           `translate(-50%, -50%) rotate(${body.angle}rad)`;
       }
-      rafRef.current = requestAnimationFrame(draw);
+      rafRef.current = window.requestAnimationFrame(draw);
     };
-    rafRef.current = requestAnimationFrame(draw);
+
+    const start = () => {
+      if (running) return;
+      running = true;
+      Runner.run(runner, engine);
+      if (!rafRef.current) rafRef.current = window.requestAnimationFrame(draw);
+    };
+    const pause = () => {
+      if (!running) return;
+      running = false;
+      Runner.stop(runner);
+    };
+    startRef.current = start;
     setReady(true);
+    start();
 
     const onResize = () => {
       const next = measure();
@@ -171,19 +206,14 @@ export default function PhysicsHero() {
     window.addEventListener('resize', onResize);
 
     // Stop simulating once things have settled, and while the tab is hidden.
-    const settleTimer = window.setTimeout(() => {
-      if (runnerRef.current) Runner.stop(runnerRef.current);
-    }, SETTLE_MS);
+    const settleTimer = window.setTimeout(() => pause(), SETTLE_MS);
 
-    const wake = () => {
-      if (runnerRef.current) Runner.run(runnerRef.current, engine);
-    };
+    const wake = () => start();
     scene.addEventListener('pointerdown', wake);
 
     const onVisibility = () => {
-      if (!runnerRef.current) return;
-      if (document.hidden) Runner.stop(runnerRef.current);
-      else Runner.run(runnerRef.current, engine);
+      if (document.hidden) pause();
+      else start();
     };
     document.addEventListener('visibilitychange', onVisibility);
 
@@ -192,8 +222,14 @@ export default function PhysicsHero() {
       window.removeEventListener('resize', onResize);
       document.removeEventListener('visibilitychange', onVisibility);
       scene.removeEventListener('pointerdown', wake);
-      cancelAnimationFrame(rafRef.current);
-      if (runnerRef.current) Runner.stop(runnerRef.current);
+      // Matter bound these itself; the scroll-eating ones went above.
+      scene.removeEventListener('mousemove', mouse.mousemove);
+      scene.removeEventListener('mousedown', mouse.mousedown);
+      scene.removeEventListener('mouseup', mouse.mouseup);
+      pause();
+      window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+      startRef.current = null;
       Composite.clear(engine.world, false);
       Engine.clear(engine);
       engineRef.current = null;
@@ -204,8 +240,10 @@ export default function PhysicsHero() {
   const shake = () => {
     const engine = engineRef.current;
     if (!engine) return;
-    const { Runner, Body } = Matter;
-    if (runnerRef.current) Runner.run(runnerRef.current, engine);
+    const { Body } = Matter;
+    // Waking goes through the same guarded start the effect uses, so a shake
+    // can never leave a second Matter frame loop behind.
+    startRef.current?.();
     bodiesRef.current.forEach((body) => {
       Body.setVelocity(body, { x: (Math.random() - 0.5) * 18, y: -12 - Math.random() * 12 });
       Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.4);
